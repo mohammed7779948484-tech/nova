@@ -11,166 +11,22 @@ All I/O is async (httpx.AsyncClient) per project constitution Principle IV.
 
 from __future__ import annotations
 
-import json
-import structlog
 import os
-import re
 import time
 from typing import Any
 
 import httpx
+import structlog
 
-from src.models.product import Product
 from src.repositories.base import ProductRepository
+from src.repositories.db_repo_helpers import _product_tokens, _row_to_product, _tokenize
 
 logger = structlog.get_logger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
-# Cache TTL in seconds (5 minutes)
 _CACHE_TTL = 300
-
-# Common Russian and English suffixes for naive stemming.
-# Sorted longest-first so we strip the most specific ending.
-_RU_SUFFIXES = (
-    "ами",
-    "ями",
-    "ому",
-    "ого",
-    "ему",
-    "его",
-    "ов",
-    "ев",
-    "ей",
-    "ий",
-    "ый",
-    "ой",
-    "ам",
-    "ям",
-    "ах",
-    "ях",
-    "ы",
-    "и",
-    "а",
-    "я",
-    "у",
-    "ю",
-    "е",
-    "о",
-)
-_EN_SUFFIXES = ("ing", "tion", "ies", "es", "ed", "ly", "er", "s")
-
-# Arabic suffixes/prefixes for light stemming.
-_AR_PREFIXES = ("ال", "وال", "بال", "كال", "فال", "لل")
-_AR_SUFFIXES = (
-    "ها",
-    "هم",
-    "هن",
-    "ك",
-    "كما",
-    "كم",
-    "كن",
-    "نا",
-    "ه",
-    "ها",
-    "ي",
-    "ان",
-    "ين",
-    "ون",
-    "ات",
-    "ة",
-    "تى",
-)
-
-_MIN_STEM = 2  # don't strip if the remaining stem is shorter than this
-
-
-def _stem(word: str) -> str:
-    """Light suffix/prefix stripping for RU/EN/AR.
-
-    Good enough for catalog search — not a full morphological analyzer.
-    """
-    w = word.lower().strip()
-
-    # Try Arabic prefixes first (longest match)
-    for pfx in _AR_PREFIXES:
-        if w.startswith(pfx) and len(w) - len(pfx) >= _MIN_STEM:
-            return w[len(pfx) :]
-
-    # Try Arabic suffixes
-    for sfx in _AR_SUFFIXES:
-        if w.endswith(sfx) and len(w) - len(sfx) >= _MIN_STEM:
-            return w[: -len(sfx)]
-
-    # Russian suffixes
-    for sfx in _RU_SUFFIXES:
-        if w.endswith(sfx) and len(w) - len(sfx) >= _MIN_STEM:
-            return w[: -len(sfx)]
-
-    # English suffixes
-    for sfx in _EN_SUFFIXES:
-        if w.endswith(sfx) and len(w) - len(sfx) >= _MIN_STEM:
-            return w[: -len(sfx)]
-
-    return w
-
-
-def _tokenize(text: str) -> set[str]:
-    """Split text into stemmed tokens.
-
-    Supports Latin, Cyrillic, and Arabic scripts.
-    """
-    words = re.findall(r"[a-zA-Zа-яА-ЯёЁ0-9\u0600-\u06FF]+", text.lower())
-    return {_stem(w) for w in words if len(w) >= 2}
-
-
-def _product_tokens(p: Product) -> set[str]:
-    """Build a set of stemmed tokens from all searchable product fields."""
-    parts = (
-        p.name
-        + " "
-        + p.description
-        + " "
-        + p.category
-        + " "
-        + " ".join(p.tags)
-        + " "
-        + p.id
-    )
-    return _tokenize(parts)
-
-
-def _row_to_product(row: dict[str, Any]) -> Product:
-    """Convert a Supabase agent_products row to a Product model.
-
-    Maps:
-      - product_slug → id (human-readable identifier)
-      - price (decimal string) → float
-      - tags (jsonb array) → list[str]
-    """
-    tags = row.get("tags", [])
-    if isinstance(tags, str):
-        tags = json.loads(tags)
-
-    price_raw = row.get("price", 0)
-    try:
-        price_val = float(price_raw)
-    except (ValueError, TypeError):
-        price_val = 0.0
-
-    return Product(
-        id=row.get("product_slug", str(row.get("id", ""))),
-        name=row.get("name", ""),
-        description=row.get("description", ""),
-        price=price_val,
-        currency=row.get("currency", "USD"),
-        category=row.get("category", ""),
-        image_url=row.get("image_url", ""),
-        tags=tags or [],
-        is_promoted=row.get("is_promoted", False),
-        promotion_text=row.get("promotion_text", ""),
-    )
 
 
 class _CacheEntry:
@@ -178,7 +34,7 @@ class _CacheEntry:
 
     __slots__ = ("products", "expires_at")
 
-    def __init__(self, products: list[Product], ttl: int = _CACHE_TTL):
+    def __init__(self, products: list, ttl: int = _CACHE_TTL):
         self.products = products
         self.expires_at = time.monotonic() + ttl
 
@@ -262,7 +118,7 @@ class DBProductRepository(ProductRepository):
             self._slug_to_agent_id[tenant_slug] = agent_id
         return agent_id
 
-    async def _load_products(self, tenant_id: str) -> list[Product]:
+    async def _load_products(self, tenant_id: str) -> list:
         """Fetch products from Supabase for the given tenant_slug."""
         agent_id = await self._get_agent_id(tenant_id)
         if not agent_id:
@@ -280,7 +136,7 @@ class DBProductRepository(ProductRepository):
         )
         return [_row_to_product(row) for row in rows]
 
-    async def _get_catalog(self, tenant_id: str) -> list[Product]:
+    async def _get_catalog(self, tenant_id: str) -> list:
         """Get cached products, refreshing from DB if expired."""
         entry = self._cache.get(tenant_id)
         if entry and entry.is_valid():
@@ -290,14 +146,14 @@ class DBProductRepository(ProductRepository):
         self._cache[tenant_id] = _CacheEntry(products, self._ttl)
         return products
 
-    async def search(self, tenant_id: str, query: str) -> list[Product]:
+    async def search(self, tenant_id: str, query: str) -> list:
         """Tokenized, stemmed search. Ranks by number of matching stems."""
         products = await self._get_catalog(tenant_id)
         q_tokens = _tokenize(query)
         if not q_tokens:
             return products[:10]
 
-        scored: list[tuple[int, Product]] = []
+        scored: list[tuple[int, Any]] = []
         for p in products:
             p_tokens = _product_tokens(p)
             overlap = len(q_tokens & p_tokens)
@@ -307,22 +163,22 @@ class DBProductRepository(ProductRepository):
         scored.sort(key=lambda x: x[0], reverse=True)
         return [p for _, p in scored[:10]]
 
-    async def get_by_id(self, tenant_id: str, product_id: str) -> Product | None:
+    async def get_by_id(self, tenant_id: str, product_id: str):
         products = await self._get_catalog(tenant_id)
         for p in products:
             if p.id == product_id:
                 return p
         return None
 
-    async def get_promotions(self, tenant_id: str) -> list[Product]:
+    async def get_promotions(self, tenant_id: str) -> list:
         products = await self._get_catalog(tenant_id)
         return [p for p in products if p.is_promoted]
 
-    async def find_similar(self, tenant_id: str, description: str) -> list[Product]:
+    async def find_similar(self, tenant_id: str, description: str) -> list:
         """Stemmed keyword overlap search."""
         products = await self._get_catalog(tenant_id)
         q_tokens = _tokenize(description)
-        scored: list[tuple[int, Product]] = []
+        scored: list[tuple[int, Any]] = []
 
         for p in products:
             overlap = len(q_tokens & _product_tokens(p))
@@ -350,7 +206,6 @@ class DBProductRepository(ProductRepository):
             self._slug_to_agent_id.clear()
 
 
-# Global instance of the DB repository
 _db_repo: DBProductRepository | None = None
 
 

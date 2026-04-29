@@ -15,11 +15,13 @@ at `specs/002-nova-backend/plan.md`
 | 5 | AI Resilience & Context | T030-T035 | ✅ Complete |
 | 6 | Human-in-the-Loop | T036-T044 | ✅ Complete |
 | 7 | WhatsApp Channel | T045-T051 | ⏸️ DEFERRED (requires WhatsApp Cloud API + phone verification) |
+| 10 | Production Readiness | T063-T068 | ✅ Complete |
 | 9 | Structured Logging | T058-T062 | ✅ Complete |
+| 11 | Polish & Cross-Cutting | T069-T073 | ✅ Complete |
 | 8 | Rate Limiting & Input Safety | T052-T057 | ✅ Complete |
 | 9+ | Structured Logging / Production | T058+ | 🔲 Not started |
 
-**Total tests: 79 — all using real DB (Supabase PostgreSQL) + real LLM (LongCat), NO mocks.**
+**Total tests: 83 — all using real DB (Supabase PostgreSQL) + real LLM (LongCat), NO mocks.**
 
 ## Build / Lint / Test Commands
 

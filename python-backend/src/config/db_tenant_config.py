@@ -1,24 +1,11 @@
-"""
-DB Tenant Config -- Supabase DB reader for tenant configuration.
-
-This module provides an alternative to the YAML-based get_tenant() in
-src/config/tenant_config.py. It reads agent and product configuration from
-a Supabase PostgreSQL database instead of local YAML/JSON files.
+"""DB Tenant Config — Supabase DB reader for tenant configuration.
 
 Uses httpx to call the Supabase PostgREST API directly, avoiding the
-heavy supabase-py dependency chain (which requires C++ build tools for
-pyiceberg on Windows).
-
-Both systems work in parallel:
-  - YAML loader:  src/config/tenant_config.py  (original, file-based)
-  - DB loader:    src/config/db_tenant_config.py (this file, Supabase-based)
+heavy supabase-py dependency chain.
 
 Usage:
     from src.config.db_tenant_config import DBTenantConfig
-
     db_config = DBTenantConfig()
-    agent = await db_config.get_agent_config(agent_id="...")
-    # OR
     agent = await db_config.get_agent_by_slug(tenant_slug="flower_shop")
 """
 

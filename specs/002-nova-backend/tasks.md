@@ -460,16 +460,16 @@ Every test task MUST include before execution:
 
 ### Tests for User Story 8 (MANDATORY — PDCA TDD Enforced) 🚨
 
-- [ ] T063 [P] [US8] Write test for health endpoint in `python-backend/tests/unit/test_health.py`.
+- [X] T063 [P] [US8] Write test for health endpoint in `python-backend/tests/unit/test_health.py`.
   - **Called Shot**: `test_health_returns_ok` — `GET /health` returns 200 with `{"status": "ok", "service": "nova-backend"}`. Expected RED: `404 Not Found` (endpoint doesn't exist or returns different format).
   - **Called Shot**: `test_health_returns_503_when_db_down` — mock DB connection failure, verify `/health` returns 503 with `"status": "degraded"`. Expected RED: same 404 or different response shape.
 
 ### Implementation for User Story 8
 
-- [ ] T064 [US8] Create health endpoint in `python-backend/src/app.py` (add to existing file):
+- [X] T064 [US8] Create health endpoint in `python-backend/src/app.py` (add to existing file):
   1. `@app.get("/health")` — checks DB connectivity by pinging connection pool. Returns `{"status": "ok", "service": "nova-backend", "database": "connected", "uptime_seconds": ...}` or `503` with `"status": "degraded"`.
 
-- [ ] T065 [P] [US8] Create `python-backend/Dockerfile` (~30 lines):
+- [X] T065 [P] [US8] Create `python-backend/Dockerfile` (~30 lines):
   1. Base: `python:3.12-slim`
   2. Install dependencies: `pip install --no-cache-dir -e .`
   3. Copy source: `COPY . /app`
@@ -477,11 +477,11 @@ Every test task MUST include before execution:
   5. CMD: `uvicorn src.app:app --host 0.0.0.0 --port 8000`
   6. Add `.dockerignore` for `.venv`, `__pycache__`, `.env`, `tests/`.
 
-- [ ] T066 [US8] Create `python-backend/.env.example` with all required environment variables documented (reference `specs/002-nova-backend/quickstart.md`).
+- [X] T066 [US8] Create `python-backend/.env.example` with all required environment variables documented (reference `specs/002-nova-backend/quickstart.md`).
 
-- [ ] T067 [US8] Run full test suite: `pytest python-backend/tests/ -v --cov=src --cov-report=term-missing`. Verify ≥80% coverage on `src/services/`, `src/nodes/`, `src/middleware/`.
+- [X] T067 [US8] Run full test suite: `pytest python-backend/tests/ -v --cov=src --cov-report=term-missing`. Verify ≥80% coverage on `src/services/`, `src/nodes/`, `src/middleware/`.
 
-- [ ] T068 [US8] Run `python-backend/quickstart.md` validation sequence:
+- [X] T068 [US8] Run `python-backend/quickstart.md` validation sequence:
   1. `ruff check src/` — zero violations
   2. `pytest tests/unit/` — all green
   3. Docker build succeeds: `docker build -t nova-backend .`
@@ -494,15 +494,15 @@ Every test task MUST include before execution:
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T069 [P] Verify all files under `python-backend/src/` are ≤ 300 lines. If any exceed, split per constitution rules. Run: `find python-backend/src -name "*.py" -exec wc -l {} + | sort -rn | head -20`.
+- [X] T069 [P] Verify all files under `python-backend/src/` are ≤ 300 lines. If any exceed, split per constitution rules. Run: `find python-backend/src -name "*.py" -exec wc -l {} + | sort -rn | head -20`.
 
-- [ ] T070 [P] Audit all `async def` functions for missing `await` calls. Grep for `httpx.AsyncClient` usages and verify every `.get()`, `.post()` is `await`-ed.
+- [X] T070 [P] Audit all `async def` functions for missing `await` calls. Grep for `httpx.AsyncClient` usages and verify every `.get()`, `.post()` is `await`-ed.
 
-- [ ] T071 Add README section to `python-backend/README.md` documenting: project structure, how to run, how to test, environment variables.
+- [X] T071 Add README section to `python-backend/README.md` documenting: project structure, how to run, how to test, environment variables.
 
-- [ ] T072 Security hardening: verify no secrets in code (grep for `sk-`, `eyJ`, hardcoded tokens). Verify `.env` is in `.gitignore`.
+- [X] T072 Security hardening: verify no secrets in code (grep for `sk-`, `eyJ`, hardcoded tokens). Verify `.env` is in `.gitignore`.
 
-- [ ] T073 Run `specs/002-nova-backend/quickstart.md` full validation — all phases pass.
+- [X] T073 Run `specs/002-nova-backend/quickstart.md` full validation — all phases pass.
 
 ---
 

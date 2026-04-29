@@ -7,6 +7,7 @@ via the FastAPI lifespan context manager.
 
 from __future__ import annotations
 
+import time
 from contextlib import asynccontextmanager
 
 import structlog
@@ -23,6 +24,8 @@ from src.middleware.rate_limiter import RateLimiterMiddleware
 from src.services.graph_service import graph_service
 
 logger = structlog.get_logger(__name__)
+
+_start_time: float = 0.0
 
 
 @asynccontextmanager
@@ -42,6 +45,7 @@ async def lifespan(app: FastAPI):
     setup_logging(settings.log_format)
 
     logger.info("nova_backend_starting")
+    _start_time = time.monotonic()
 
     await graph_service._ensure_graph()
 
@@ -90,8 +94,31 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for monitoring and API bridge."""
-    return {"status": "ok", "service": "nova-backend"}
+    """Health check endpoint with DB connectivity status and uptime."""
+    pool = graph_service._connection_pool
+    db_connected = pool is not None
+
+    uptime = round(time.monotonic() - _start_time, 1) if _start_time > 0 else 0.0
+
+    if db_connected:
+        return {
+            "status": "ok",
+            "service": "nova-backend",
+            "database": "connected",
+            "uptime_seconds": uptime,
+        }
+
+    from starlette.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=503,
+        content={
+            "status": "degraded",
+            "service": "nova-backend",
+            "database": "disconnected",
+            "uptime_seconds": uptime,
+        },
+    )
 
 
 app.include_router(admin_router)
