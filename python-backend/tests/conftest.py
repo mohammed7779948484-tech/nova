@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import AsyncMock, MagicMock
+import sys
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -11,45 +11,12 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
 os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-key")
+if "SUPABASE_URL" not in os.environ:
+    os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+if "SUPABASE_SERVICE_KEY" not in os.environ:
+    os.environ["SUPABASE_SERVICE_KEY"] = "test-key"
 
 from src.config.settings import get_settings
-
-
-@pytest.fixture()
-def mock_supabase_client():
-    """Mock httpx.AsyncClient that stubs Supabase REST API calls."""
-    client = AsyncMock(spec=AsyncClient)
-    response = MagicMock()
-    response.status_code = 200
-    response.json.return_value = []
-    client.get.return_value = response
-    client.post.return_value = response
-    client.patch.return_value = response
-    return client
-
-
-@pytest.fixture()
-def fake_tenant_config():
-    """Minimal TenantConfig-like dict for tests."""
-    return {
-        "tenant_id": "flower_shop",
-        "business_name": "Flower Shop",
-        "language": "en",
-        "agent_name": "Florist Bot",
-        "role": "customer_service",
-        "personality": "friendly and helpful",
-        "rules": [],
-        "products": [],
-        "instructions": [],
-    }
-
-
-@pytest.fixture()
-def settings():
-    """Return application settings with test-safe defaults."""
-    return get_settings()
 
 
 @pytest_asyncio.fixture()

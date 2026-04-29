@@ -11,7 +11,6 @@ which are the primary method used in production.
 from __future__ import annotations
 
 import logging
-import os
 import time
 from functools import lru_cache
 from pathlib import Path
@@ -25,10 +24,6 @@ from src.config.settings import get_settings
 
 if TYPE_CHECKING:
     from src.config.db_tenant_config import DBTenantConfig
-
-os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-key")
 
 load_dotenv()
 

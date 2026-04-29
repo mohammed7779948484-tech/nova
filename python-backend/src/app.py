@@ -11,8 +11,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.channels.admin.router import router as admin_router
 from src.channels.web.router import router as web_router
 from src.channels.whatsapp.router import router as whatsapp_router
+from src.services.graph_service import graph_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +25,13 @@ async def lifespan(app: FastAPI):
 
     Startup:
       - Initialize logging
-      - DB clients are lazily created on first use
+      - Pre-warm graph service (compile graph with PostgresSaver)
 
     Shutdown:
-      - Close httpx.AsyncClient used by DBTenantConfig
-      - Close httpx.AsyncClient used by DBProductRepository
+      - Close graph service (connection pool)
+      - Close DBTenantConfig's httpx.AsyncClient
+      - Close DBProductRepository's httpx.AsyncClient
     """
-    # ── Startup ──
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -37,17 +39,18 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Nova Backend starting up — initializing resources")
 
-    yield  # Application runs here
+    await graph_service._ensure_graph()
 
-    # ── Shutdown ──
+    yield
+
     logger.info("Nova Backend shutting down — cleaning up resources")
 
-    # Close DBTenantConfig's httpx.AsyncClient
+    await graph_service.shutdown()
+
     from src.config.tenant_config import _db_config
     if _db_config is not None:
         await _db_config.aclose()
 
-    # Close DBProductRepository's httpx.AsyncClient
     from src.repositories.db_repo import _db_repo
     if _db_repo is not None:
         await _db_repo.aclose()
@@ -72,10 +75,8 @@ async def health_check():
     return {"status": "ok", "service": "nova-backend"}
 
 
-# Web endpoints at root (for the Sales Studio)
+app.include_router(admin_router)
 app.include_router(web_router, prefix="")
-
-# Webhooks (under /api prefix for consistency)
 app.include_router(whatsapp_router, prefix="/api/webhooks/whatsapp")
 
 

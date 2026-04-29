@@ -161,24 +161,24 @@ Every test task MUST include before execution:
 
 ### Tests for User Story 2 (MANDATORY — PDCA TDD Enforced) 🚨
 
-- [ ] T020 [P] [US2] Write test for PostgresSaver graph compilation in `python-backend/tests/unit/test_graph_compilation.py`.
+- [X] T020 [P] [US2] Write test for PostgresSaver graph compilation in `python-backend/tests/unit/test_graph_compilation.py`.
   - **Called Shot**: `test_graph_compiles_with_checkpointer` — call `build_sales_graph()`, verify it returns a `StateGraph` instance. Then call a new `async compile_with_postgres(pool)` function, verify it returns a `CompiledStateGraph` with a non-None checkpointer. Expected RED: `AttributeError: module 'src.graphs.sales_graph' has no attribute 'compile_with_postgres'` (function doesn't exist yet — currently only `compile_sales_graph()` with InMemorySaver at line 44-55).
   - **Called Shot**: `test_graph_compiles_without_checkpointer_in_degraded_mode` — when connection pool is None, graph compiles with `checkpointer=None` and logs a warning. Expected RED: same AttributeError.
   - 📎 LangGraph: `StateGraph.compile(checkpointer=AsyncPostgresSaver)` — Ref: `reference-template/app/core/langgraph/graph.py:206-225`
 
-- [ ] T021 [P] [US2] Write test for GraphService in `python-backend/tests/unit/test_graph_service.py`.
+- [X] T021 [P] [US2] Write test for GraphService in `python-backend/tests/unit/test_graph_service.py`.
   - **Called Shot**: `test_graph_service_invokes_with_tenant_config` — create `GraphService`, call `process_message(tenant_slug="flower_shop", session_id="test-1", message="hello")`, verify it returns a non-empty response string. Expected RED: `ImportError: cannot import name 'GraphService' from 'src.services.graph_service'` (file doesn't exist).
   - **Called Shot**: `test_graph_service_reuses_compiled_graph` — call `process_message` twice, verify the graph is compiled only once (lazy singleton). Expected RED: same ImportError.
   - 📎 LangGraph: `graph.ainvoke(input, config={"configurable": {"thread_id": ..., "tenant_id": ...}})` — Ref: `reference-template/app/core/langgraph/graph.py:276-294`
 
-- [ ] T022 [P] [US2] Write test for conversation list endpoint in `python-backend/tests/unit/test_conversation_endpoints.py`.
+- [X] T022 [P] [US2] Write test for conversation list endpoint in `python-backend/tests/unit/test_conversation_endpoints.py`.
   - **Called Shot**: `test_list_conversations_returns_paginated` — `GET /api/conversations?agent_id=<uuid>&page=1&limit=10` returns 200 with `conversations` list, `total`, `page`, `limit` fields. Expected RED: `404 Not Found` (endpoint doesn't exist).
   - **Called Shot**: `test_list_conversations_requires_agent_id` — `GET /api/conversations` without `agent_id` returns 422 validation error. Expected RED: `404 Not Found`.
   - **Called Shot**: `test_get_conversation_messages` — `GET /api/conversations/<uuid>/messages` returns 200 with `conversation_id` and `messages` list. Expected RED: `404 Not Found`.
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Create `python-backend/src/services/graph_service.py` (~120 lines). This is the central service that all channels call. Pattern adopted from `reference-template/app/core/langgraph/graph.py:77-241`:
+- [X] T023 [US2] Create `python-backend/src/services/graph_service.py` (~120 lines). This is the central service that all channels call. Pattern adopted from `reference-template/app/core/langgraph/graph.py:77-241`:
   1. `class GraphService` with `__init__` creating `_connection_pool: AsyncConnectionPool | None = None` and `_graph: CompiledStateGraph | None = None`.
   2. `async def _get_connection_pool()` — lazy init with `psycopg_pool.AsyncConnectionPool` using `DATABASE_URL` from settings. Pool config: `max_size=10`, `open=False`, `kwargs={"autocommit": True, "connect_timeout": 5, "prepare_threshold": None}`. Graceful fallback if pool fails.
   3. `async def _ensure_graph()` — lazy compile: `build_sales_graph().compile(checkpointer=AsyncPostgresSaver(pool))` or `checkpointer=None` in degraded mode.
@@ -187,21 +187,21 @@ Every test task MUST include before execution:
   Module-level singleton: `graph_service = GraphService()`.
   📎 LangGraph: `AsyncPostgresSaver(pool)` + `await checkpointer.setup()` + `builder.compile(checkpointer=checkpointer)`
 
-- [ ] T024 [US2] Refactor `python-backend/src/graphs/sales_graph.py` to support PostgresSaver:
+- [X] T024 [US2] Refactor `python-backend/src/graphs/sales_graph.py` to support PostgresSaver:
   1. Remove `from langgraph.checkpoint.memory import InMemorySaver` (line 10).
   2. Remove `compile_sales_graph()` function (lines 44-55) — compilation now happens in `GraphService`.
   3. Keep only `build_sales_graph() -> StateGraph` (the uncompiled builder).
   4. File goes from 56 lines → ~42 lines.
   📎 LangGraph: Separate graph building from compilation to allow different checkpointers per environment.
 
-- [ ] T025 [US2] Refactor `python-backend/src/channels/web/router.py` to use `GraphService` instead of inline graph:
+- [X] T025 [US2] Refactor `python-backend/src/channels/web/router.py` to use `GraphService` instead of inline graph:
   1. Remove lines 15-16 (`from src.graphs.sales_graph import build_sales_graph` and `InMemorySaver` import).
   2. Remove lines 21-22 (module-level `_checkpointer` and `_graph` creation).
   3. In `chat()` endpoint (line 100), replace `_graph.astream_events(...)` with `graph_service.process_message(tenant_slug=tenant_id, session_id=thread_id, message=message, channel="web")`.
   4. Import `from src.services.graph_service import graph_service` at top.
   5. Streaming can be added later — for now return JSON response.
 
-- [ ] T026 [US2] Create `python-backend/src/services/conversation_service.py` (~100 lines). CRUD for conversations/messages via Supabase REST API:
+- [X] T026 [US2] Create `python-backend/src/services/conversation_service.py` (~100 lines). CRUD for conversations/messages via Supabase REST API:
   1. `class ConversationService` with `httpx.AsyncClient` using `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`.
   2. `async def list_conversations(agent_id, page, limit, status_filter)` — query `conversations` table with pagination. Join with messages count via PostgREST `select=*,messages(count)`.
   3. `async def get_messages(conversation_id)` — query `messages` table ordered by `created_at`.
@@ -210,17 +210,17 @@ Every test task MUST include before execution:
   6. `async def update_status(conversation_id, status)` — update `conversations.status`.
   Module-level singleton: `conversation_service = ConversationService()`.
 
-- [ ] T027 [US2] Create conversation management endpoints. Add new router `python-backend/src/channels/admin/router.py` (~60 lines):
+- [X] T027 [US2] Create conversation management endpoints. Add new router `python-backend/src/channels/admin/router.py` (~60 lines):
   1. `GET /api/conversations` — calls `conversation_service.list_conversations()`. Query params: `agent_id` (required), `page`, `limit`, `status`.
   2. `GET /api/conversations/{conversation_id}/messages` — calls `conversation_service.get_messages()`.
   3. Register in `python-backend/src/app.py`: `from src.channels.admin.router import router as admin_router` and `app.include_router(admin_router)`.
 
-- [ ] T028 [US2] Update `python-backend/src/app.py` lifespan for connection pool lifecycle:
+- [X] T028 [US2] Update `python-backend/src/app.py` lifespan for connection pool lifecycle:
   1. In startup: call `await graph_service._ensure_graph()` to pre-warm the connection pool.
   2. In shutdown: call `await graph_service.shutdown()` to close the pool. Replace the old `_db_repo.close()` with `await _db_repo.aclose()` (from T014).
   3. Import `from src.services.graph_service import graph_service`.
 
-- [ ] T029 [US2] Run all US2 tests: `pytest python-backend/tests/unit/test_graph_compilation.py python-backend/tests/unit/test_graph_service.py python-backend/tests/unit/test_conversation_endpoints.py -v`. All must pass GREEN.
+- [X] T029 [US2] Run all US2 tests: `pytest python-backend/tests/unit/test_graph_compilation.py python-backend/tests/unit/test_graph_service.py python-backend/tests/unit/test_conversation_endpoints.py -v`. All must pass GREEN.
 
 **Checkpoint**: Conversations persist via PostgresSaver. Admin can list/view conversations. Server restart preserves history.
 

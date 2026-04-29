@@ -1,18 +1,21 @@
 """Sales agent graph assembly.
 
 Wires together the assistant and tool_executor nodes into a
-StateGraph with persistence. This is the core reusable graph
-that serves all tenants.
+StateGraph. Compilation with a checkpointer is done separately
+by GraphService using compile_with_postgres_async().
 """
 
 from __future__ import annotations
 
-from langgraph.checkpoint.memory import InMemorySaver
+import logging
+
 from langgraph.graph import StateGraph, START
 
 from src.nodes.assistant import assistant_node
 from src.nodes.tool_executor import tool_executor_node
 from src.state.agent_state import SalesAgentState
+
+logger = logging.getLogger(__name__)
 
 
 def build_sales_graph() -> StateGraph:
@@ -26,30 +29,35 @@ def build_sales_graph() -> StateGraph:
     """
     builder = StateGraph(SalesAgentState)
 
-    # Add nodes
     builder.add_node("assistant", assistant_node)
     builder.add_node("tools", tool_executor_node)
 
-    # Entry point
     builder.add_edge(START, "assistant")
-
-    # NOTE: No explicit edges between assistant ↔ tools.
-    # Routing is done via Command inside each node:
-    #   assistant → Command(goto="tools") or Command(goto="__end__")
-    #   tools     → Command(goto="assistant")
 
     return builder
 
 
-def compile_sales_graph():
-    """Compile the graph with in-memory checkpointer.
+async def compile_with_postgres_async(pool):
+    """Compile the graph with AsyncPostgresSaver (async).
 
-    Returns a compiled graph ready to invoke with:
-        graph.invoke(
-            {"messages": [("user", "hello")]},
-            config={"configurable": {"thread_id": "...", "tenant_id": "..."}}
-        )
+    Args:
+        pool: AsyncConnectionPool for PostgresSaver. If None, compiles
+              with checkpointer=None and logs a warning (degraded mode).
+
+    Returns:
+        CompiledStateGraph ready to invoke.
     """
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
     builder = build_sales_graph()
-    checkpointer = InMemorySaver()
-    return builder.compile(checkpointer=checkpointer)
+
+    if pool is not None:
+        checkpointer = AsyncPostgresSaver(pool)
+        await checkpointer.setup()
+        compiled = builder.compile(checkpointer=checkpointer)
+        logger.info("graph_compiled_with_postgres_saver")
+    else:
+        compiled = builder.compile(checkpointer=None)
+        logger.warning("graph_compiled_without_checkpointer_degraded_mode")
+
+    return compiled
