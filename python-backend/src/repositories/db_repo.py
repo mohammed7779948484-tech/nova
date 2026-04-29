@@ -5,6 +5,8 @@ Caches products in memory with a configurable TTL for performance.
 
 Uses the same search/get_promotions/find_similar interface as
 JsonProductRepository, so it can be used as a drop-in replacement.
+
+All I/O is async (httpx.AsyncClient) per project constitution Principle IV.
 """
 
 from __future__ import annotations
@@ -17,13 +19,9 @@ import time
 from typing import Any
 
 import httpx
-from dotenv import load_dotenv
 
 from src.models.product import Product
 from src.repositories.base import ProductRepository
-
-# Ensure .env is loaded before reading env vars
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +42,6 @@ _RU_SUFFIXES = (
 _EN_SUFFIXES = ("ing", "tion", "ies", "es", "ed", "ly", "er", "s")
 
 # Arabic suffixes/prefixes for light stemming.
-# These are common Arabic prefixes and suffixes that can be stripped
-# without changing the root meaning of the word.
 _AR_PREFIXES = ("ال", "وال", "بال", "كال", "فال", "لل")
 _AR_SUFFIXES = ("ها", "هم", "هن", "ك", "كما", "كم", "كن", "نا", "ه", "ها", "ي", "ان", "ين", "ون", "ات", "ة", "تى")
 
@@ -87,7 +83,6 @@ def _tokenize(text: str) -> set[str]:
 
     Supports Latin, Cyrillic, and Arabic scripts.
     """
-    # Match Latin, Cyrillic, Arabic, and digit characters
     words = re.findall(r"[a-zA-Zа-яА-ЯёЁ0-9\u0600-\u06FF]+", text.lower())
     return {_stem(w) for w in words if len(w) >= 2}
 
@@ -150,7 +145,7 @@ class _CacheEntry:
 class DBProductRepository(ProductRepository):
     """Loads product data from Supabase agent_products table.
 
-    Uses the Supabase PostgREST API directly via httpx.
+    Uses the Supabase PostgREST API directly via httpx.AsyncClient.
     Caches products per tenant_slug in memory with TTL.
 
     The tenant_id parameter in the ProductRepository protocol maps
@@ -177,26 +172,25 @@ class DBProductRepository(ProductRepository):
             "Content-Type": "application/json",
             "Prefer": "return=representation",
         }
-        self.client = httpx.Client(
+        self.client = httpx.AsyncClient(
             base_url=f"{self.base_url}/rest/v1",
             headers=self.headers,
             timeout=30.0,
         )
         self._cache: dict[str, _CacheEntry] = {}
         self._ttl = ttl
-        # Cache the tenant_slug → agent_id mapping to avoid extra lookups
         self._slug_to_agent_id: dict[str, str] = {}
         logger.info("DBProductRepository initialized — connected to %s", self.base_url)
 
-    def close(self) -> None:
-        """Close the underlying httpx.Client.
+    async def aclose(self) -> None:
+        """Close the underlying httpx.AsyncClient.
 
         Call this during application shutdown.
         """
-        self.client.close()
-        logger.info("DBProductRepository — httpx.Client closed")
+        await self.client.aclose()
+        logger.info("DBProductRepository — httpx.AsyncClient closed")
 
-    def _query_table(
+    async def _query_table(
         self, table: str, filters: dict[str, str], select: str = "*"
     ) -> list[dict[str, Any]]:
         """Query a Supabase table with filters via PostgREST API."""
@@ -204,11 +198,11 @@ class DBProductRepository(ProductRepository):
         for col, val in filters.items():
             params[col] = f"eq.{val}"
 
-        response = self.client.get(f"/{table}", params=params)
+        response = await self.client.get(f"/{table}", params=params)
         response.raise_for_status()
         return response.json()
 
-    def _get_agent_id(self, tenant_slug: str) -> str | None:
+    async def _get_agent_id(self, tenant_slug: str) -> str | None:
         """Look up the agent UUID for a given tenant_slug.
 
         Results are cached in memory for the lifetime of the repository.
@@ -216,7 +210,7 @@ class DBProductRepository(ProductRepository):
         if tenant_slug in self._slug_to_agent_id:
             return self._slug_to_agent_id[tenant_slug]
 
-        rows = self._query_table(
+        rows = await self._query_table(
             "agents",
             {"tenant_slug": tenant_slug, "is_active": "true"},
             select="id",
@@ -226,14 +220,14 @@ class DBProductRepository(ProductRepository):
             self._slug_to_agent_id[tenant_slug] = agent_id
         return agent_id
 
-    def _load_products(self, tenant_id: str) -> list[Product]:
+    async def _load_products(self, tenant_id: str) -> list[Product]:
         """Fetch products from Supabase for the given tenant_slug."""
-        agent_id = self._get_agent_id(tenant_id)
+        agent_id = await self._get_agent_id(tenant_id)
         if not agent_id:
             logger.warning("No agent found for tenant_slug='%s'", tenant_id)
             return []
 
-        rows = self._query_table(
+        rows = await self._query_table(
             "agent_products",
             {"agent_id": agent_id, "is_available": "true"},
         )
@@ -243,19 +237,19 @@ class DBProductRepository(ProductRepository):
         )
         return [_row_to_product(row) for row in rows]
 
-    def _get_catalog(self, tenant_id: str) -> list[Product]:
+    async def _get_catalog(self, tenant_id: str) -> list[Product]:
         """Get cached products, refreshing from DB if expired."""
         entry = self._cache.get(tenant_id)
         if entry and entry.is_valid():
             return entry.products
 
-        products = self._load_products(tenant_id)
+        products = await self._load_products(tenant_id)
         self._cache[tenant_id] = _CacheEntry(products, self._ttl)
         return products
 
-    def search(self, tenant_id: str, query: str) -> list[Product]:
-        """Tokenized, stemmed search.  Ranks by number of matching stems."""
-        products = self._get_catalog(tenant_id)
+    async def search(self, tenant_id: str, query: str) -> list[Product]:
+        """Tokenized, stemmed search. Ranks by number of matching stems."""
+        products = await self._get_catalog(tenant_id)
         q_tokens = _tokenize(query)
         if not q_tokens:
             return products[:10]
@@ -270,20 +264,20 @@ class DBProductRepository(ProductRepository):
         scored.sort(key=lambda x: x[0], reverse=True)
         return [p for _, p in scored[:10]]
 
-    def get_by_id(self, tenant_id: str, product_id: str) -> Product | None:
-        products = self._get_catalog(tenant_id)
+    async def get_by_id(self, tenant_id: str, product_id: str) -> Product | None:
+        products = await self._get_catalog(tenant_id)
         for p in products:
             if p.id == product_id:
                 return p
         return None
 
-    def get_promotions(self, tenant_id: str) -> list[Product]:
-        products = self._get_catalog(tenant_id)
+    async def get_promotions(self, tenant_id: str) -> list[Product]:
+        products = await self._get_catalog(tenant_id)
         return [p for p in products if p.is_promoted]
 
-    def find_similar(self, tenant_id: str, description: str) -> list[Product]:
+    async def find_similar(self, tenant_id: str, description: str) -> list[Product]:
         """Stemmed keyword overlap search."""
-        products = self._get_catalog(tenant_id)
+        products = await self._get_catalog(tenant_id)
         q_tokens = _tokenize(description)
         scored: list[tuple[int, Product]] = []
 

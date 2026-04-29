@@ -1,5 +1,6 @@
 """WhatsApp webhook router."""
 
+import logging
 import os
 
 from fastapi import APIRouter, Request, HTTPException
@@ -9,6 +10,7 @@ from src.channels.whatsapp.adapter import WhatsAppAdapter
 
 router = APIRouter()
 adapter = WhatsAppAdapter()
+logger = logging.getLogger(__name__)
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "your_verify_token_here")
 
@@ -19,7 +21,7 @@ async def verify_webhook(request: Request):
     mode = request.query_params.get("hub.mode")
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
-    
+
     if mode == "subscribe" and token == VERIFY_TOKEN:
         return challenge
     raise HTTPException(status_code=403, detail="Forbidden")
@@ -28,12 +30,11 @@ async def verify_webhook(request: Request):
 @router.post("")
 async def receive_webhook(request: Request):
     """Receive messages from WhatsApp."""
+    # TODO(US5): Wire to GraphService
     payload = await request.json()
-    inbound_msg = adapter.parse_webhook(payload)
-    
-    # Real integration:
-    # 1. Start background task to invoke graph using `inbound_msg`.
-    # 2. Graph outputs an OutboundMessage.
-    # 3. Adapter uses send_reply to send it back.
-    
+    logger.warning(
+        "WhatsApp webhook received but not processed — awaiting Phase 4 integration"
+    )
+    _inbound_msg = adapter.parse_webhook(payload)
+
     return {"status": "ok"}

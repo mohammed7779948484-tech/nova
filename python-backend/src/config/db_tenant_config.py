@@ -43,7 +43,7 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
 
 @dataclass
-class AgentConfig:
+class DBAgentConfig:
     """Agent configuration loaded from Supabase."""
 
     agent_id: str
@@ -151,14 +151,14 @@ class DBTenantConfig:
         results = await self._query_table(table, filters, select)
         return results[0] if results else None
 
-    async def get_agent_config(self, agent_id: str) -> AgentConfig:
+    async def get_agent_config(self, agent_id: str) -> DBAgentConfig:
         """Load agent config from Supabase by agent_id.
 
         Args:
             agent_id: UUID of the agent to load.
 
         Returns:
-            AgentConfig with all fields populated from the database.
+            DBAgentConfig with all fields populated from the database.
 
         Raises:
             ValueError: If agent not found or inactive.
@@ -193,7 +193,7 @@ class DBTenantConfig:
             len(instructions or []),
         )
 
-        return AgentConfig(
+        return DBAgentConfig(
             agent_id=agent["id"],
             tenant_id=agent["tenant_id"],
             tenant_slug=agent["tenant_slug"],
@@ -214,7 +214,7 @@ class DBTenantConfig:
             instructions=[i["instruction"] for i in (instructions or [])],
         )
 
-    async def get_agent_by_slug(self, tenant_slug: str) -> Optional[AgentConfig]:
+    async def get_agent_by_slug(self, tenant_slug: str) -> Optional[DBAgentConfig]:
         """Find an agent by its tenant slug (e.g. 'flower_shop').
 
         This mirrors the YAML-based get_tenant(tenant_id) interface,
@@ -224,7 +224,7 @@ class DBTenantConfig:
             tenant_slug: The tenant slug (e.g. 'flower_shop').
 
         Returns:
-            AgentConfig if found, None otherwise.
+            DBAgentConfig if found, None otherwise.
         """
         result = await self._query_single(
             "agents",
@@ -238,7 +238,7 @@ class DBTenantConfig:
 
     async def get_agent_by_whatsapp_phone(
         self, phone_number_id: str
-    ) -> Optional[AgentConfig]:
+    ) -> Optional[DBAgentConfig]:
         """Find which agent owns this WhatsApp phone number.
 
         Used by webhook handlers to route incoming messages to the
@@ -248,7 +248,7 @@ class DBTenantConfig:
             phone_number_id: The WhatsApp phone number ID.
 
         Returns:
-            AgentConfig if found, None otherwise.
+            DBAgentConfig if found, None otherwise.
         """
         result = await self._query_single(
             "whatsapp_connections",
@@ -272,14 +272,14 @@ class DBTenantConfig:
         logger.debug("Listed %d active agents from DB", len(agents))
         return agents
 
-    def agent_config_to_tenant_config(self, config: AgentConfig) -> dict:
-        """Convert AgentConfig to the dict format expected by TenantConfig.
+    def agent_config_to_tenant_config(self, config: DBAgentConfig) -> dict:
+        """Convert DBAgentConfig to the dict format expected by TenantConfig.
 
         This allows DB-loaded configs to be used with the existing
         create_llm() and other functions that expect TenantConfig fields.
 
         Args:
-            config: AgentConfig loaded from database.
+            config: DBAgentConfig loaded from database.
 
         Returns:
             Dict matching TenantConfig Pydantic model structure.
@@ -305,4 +305,5 @@ class DBTenantConfig:
                 "promotions": config.promotions,
                 "upsell": config.upsell,
             },
+            "instructions": config.instructions,
         }

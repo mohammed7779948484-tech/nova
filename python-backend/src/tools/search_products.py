@@ -9,7 +9,7 @@ from src.repositories import get_repository
 
 
 @tool
-def search_products(query: str, config: RunnableConfig) -> str:
+async def search_products(query: str, config: RunnableConfig) -> str:
     """Search for products matching a text query.
 
     Use this when the customer asks about available products,
@@ -20,7 +20,7 @@ def search_products(query: str, config: RunnableConfig) -> str:
     """
     tenant_id = config["configurable"]["tenant_id"]
     repo = get_repository()
-    results = repo.search(tenant_id, query)
+    results = await repo.search(tenant_id, query)
 
     if not results:
         return f"No products found for '{query}'. Try broader terms or ask me what's available."
@@ -28,5 +28,5 @@ def search_products(query: str, config: RunnableConfig) -> str:
     lines = [f"Found {len(results)} product(s):\n"]
     for p in results:
         lines.append(p.to_display())
-        lines.append("")  # blank line separator
+        lines.append("")
     return "\n".join(lines)

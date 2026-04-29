@@ -11,9 +11,11 @@ which are the primary method used in production.
 from __future__ import annotations
 
 import logging
+import os
+import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import yaml
 from dotenv import load_dotenv
@@ -21,10 +23,19 @@ from pydantic import BaseModel, Field
 
 from src.config.settings import get_settings
 
-# Ensure env vars are loaded for DBTenantConfig
+if TYPE_CHECKING:
+    from src.config.db_tenant_config import DBTenantConfig
+
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
+os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-key")
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+_tenant_cache: dict[str, tuple[TenantConfig, float]] = {}
+_TENANT_CACHE_TTL = 300
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +77,7 @@ class TenantConfig(BaseModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
+    instructions: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -133,16 +145,23 @@ async def async_get_tenant(tenant_id: str) -> TenantConfig:
     The tenant_id parameter is actually the tenant_slug
     (e.g. "flower_shop", "tech_store").
 
+    Results are cached for _TENANT_CACHE_TTL seconds (5 min).
     Falls back to YAML loading if the DB lookup returns None
     or if any exception occurs (network error, auth error, etc.).
     """
+    cached = _tenant_cache.get(tenant_id)
+    if cached and time.monotonic() < cached[1]:
+        return cached[0]
+
     try:
         db = _get_db_config()
         agent_cfg = await db.get_agent_by_slug(tenant_id)
 
         if agent_cfg:
             data = db.agent_config_to_tenant_config(agent_cfg)
-            return TenantConfig(**data)
+            config = TenantConfig(**data)
+            _tenant_cache[tenant_id] = (config, time.monotonic() + _TENANT_CACHE_TTL)
+            return config
 
         logger.warning(
             "Tenant '%s' not found in DB, falling back to YAML",
@@ -196,3 +215,16 @@ async def async_list_tenants() -> list[dict[str, Any]]:
                 "provider": f"{tc.llm.provider}/{tc.llm.model}",
             })
         return result
+
+
+def invalidate_tenant_cache(tenant_id: str | None = None) -> None:
+    """Clear cached tenant config.
+
+    Args:
+        tenant_id: If given, clear only that tenant's cache.
+                   Otherwise clear all cached entries.
+    """
+    if tenant_id:
+        _tenant_cache.pop(tenant_id, None)
+    else:
+        _tenant_cache.clear()

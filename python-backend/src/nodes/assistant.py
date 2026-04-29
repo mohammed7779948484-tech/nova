@@ -42,15 +42,23 @@ def _build_system_prompt(tc: TenantConfig, channel: str | None = None) -> str:
         "- NEVER describe, list, or suggest products from your own knowledge. "
         "You MUST use the tools to find real products.\n"
         "- If search returns no results, say so honestly — do NOT invent categories or items.\n"
-        "- To show product photos, ALWAYS call the send_product_image tool with the product_id. "
-        "NEVER paste image URLs directly into your text response. "
-        "NEVER use markdown image syntax like ![](url). "
-        "The send_product_image tool handles rendering on the customer's device.\n"
-        "- When the customer says 'покажи', 'фото', 'show', or similar — "
-        "call send_product_image for each relevant product."
+"- To show product photos, ALWAYS call the get_product_details tool with the product_id. "
+ "NEVER paste image URLs directly into your text response. "
+ "NEVER use markdown image syntax like ![](url). "
+ "The get_product_details tool handles rendering on the customer's device.\n"
+ "- When the customer says 'покажи', 'фото', 'show', or similar — "
+ "call get_product_details for each relevant product."
     )
 
     channel_hint = f"You are chatting on {channel}.\n\n" if channel else ""
+
+    instructions_block = ""
+    if tc.instructions:
+        instructions_block = (
+            "\n## Custom Instructions\n"
+            + "\n".join(f"- {i}" for i in tc.instructions)
+            + "\n"
+        )
 
     return (
         f"You are {agent.name}, a {agent.role} at {tc.business_name}.\n\n"
@@ -63,6 +71,7 @@ def _build_system_prompt(tc: TenantConfig, channel: str | None = None) -> str:
         f"You MUST respond ONLY in: {tc.language}. "
         f"If language is 'ru', respond in Russian (NOT Kazakh, NOT English). "
         f"Match the customer's language only if they explicitly write in another language.\n"
+        + instructions_block
     )
 
 

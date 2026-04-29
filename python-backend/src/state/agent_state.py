@@ -19,12 +19,10 @@ class SalesAgentState(TypedDict):
     Attributes:
         messages: Conversation history. Uses add_messages reducer
                   so messages accumulate across nodes automatically.
-        matched_products: Products found by the most recent search.
-        product_images: Image URLs to send back to the user.
+        channel: The communication channel (e.g. "web", "whatsapp").
+        channel_user_id: The user's ID on the given channel.
     """
 
     messages: Annotated[list[AnyMessage], add_messages]
-    matched_products: list[dict]
-    product_images: list[str]
     channel: str
     channel_user_id: str

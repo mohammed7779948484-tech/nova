@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from langchain_core.messages import HumanMessage
 
-from src.config.tenant_config import async_list_tenants, async_get_tenant
+from src.config.tenant_config import async_list_tenants
 from src.graphs.sales_graph import build_sales_graph
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -122,7 +122,7 @@ async def chat(request: Request):
     }
     
     # Let graph know about channel context
-    state_updates = {"channel": "web", "channel_user_id": thread_id}
+    _state_updates = {"channel": "web", "channel_user_id": thread_id}
     # Currently astream_events doesn't let us pass initial keys easily except via messages, 
     # but langgraph allows updating state if we do graph.update_state()
     # Alternatively, just inject a HumanMessage.

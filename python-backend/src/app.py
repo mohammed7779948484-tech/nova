@@ -13,8 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.channels.web.router import router as web_router
 from src.channels.whatsapp.router import router as whatsapp_router
-from src.channels.telegram.router import router as telegram_router
-from src.channels.instagram.router import router as instagram_router
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +27,7 @@ async def lifespan(app: FastAPI):
 
     Shutdown:
       - Close httpx.AsyncClient used by DBTenantConfig
-      - Close httpx.Client used by DBProductRepository
+      - Close httpx.AsyncClient used by DBProductRepository
     """
     # ── Startup ──
     logging.basicConfig(
@@ -37,27 +35,27 @@ async def lifespan(app: FastAPI):
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
-    logger.info("🚀 Sales Agent starting up — initializing resources")
+    logger.info("Nova Backend starting up — initializing resources")
 
     yield  # Application runs here
 
     # ── Shutdown ──
-    logger.info("🛑 Sales Agent shutting down — cleaning up resources")
+    logger.info("Nova Backend shutting down — cleaning up resources")
 
     # Close DBTenantConfig's httpx.AsyncClient
     from src.config.tenant_config import _db_config
     if _db_config is not None:
         await _db_config.aclose()
 
-    # Close DBProductRepository's httpx.Client
+    # Close DBProductRepository's httpx.AsyncClient
     from src.repositories.db_repo import _db_repo
     if _db_repo is not None:
-        _db_repo.close()
+        await _db_repo.aclose()
 
-    logger.info("✅ All resources cleaned up")
+    logger.info("All resources cleaned up")
 
 
-app = FastAPI(title="Multi-Channel Sales Agent", lifespan=lifespan)
+app = FastAPI(title="Nova Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,7 +69,7 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring and API bridge."""
-    return {"status": "ok", "service": "sales-agent"}
+    return {"status": "ok", "service": "nova-backend"}
 
 
 # Web endpoints at root (for the Sales Studio)
@@ -79,11 +77,9 @@ app.include_router(web_router, prefix="")
 
 # Webhooks (under /api prefix for consistency)
 app.include_router(whatsapp_router, prefix="/api/webhooks/whatsapp")
-app.include_router(telegram_router, prefix="/api/webhooks/telegram")
-app.include_router(instagram_router, prefix="/api/webhooks/instagram")
 
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Sales Agent (Multi-Channel) starting on http://localhost:8000")
+    print("Nova Backend starting on http://localhost:8000")
     uvicorn.run("src.app:app", host="0.0.0.0", port=8000, reload=False)

@@ -1,4 +1,4 @@
-"""Tool: send a product image to the customer."""
+"""Tool: get product details including name, price, and image URL."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from src.repositories import get_repository
 
 
 @tool
-def send_product_image(product_id: str, config: RunnableConfig) -> str:
-    """Send a product photo to the customer.
+async def get_product_details(product_id: str, config: RunnableConfig) -> str:
+    """Get product details including name, price, and image URL.
 
     Use this when the customer asks to see a product, or when you want
     to visually showcase a recommended item.
@@ -20,7 +20,7 @@ def send_product_image(product_id: str, config: RunnableConfig) -> str:
     """
     tenant_id = config["configurable"]["tenant_id"]
     repo = get_repository()
-    product = repo.get_by_id(tenant_id, product_id)
+    product = await repo.get_by_id(tenant_id, product_id)
 
     if not product:
         return f"Product '{product_id}' not found."

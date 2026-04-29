@@ -9,7 +9,7 @@ from src.repositories import get_repository
 
 
 @tool
-def search_by_image(image_description: str, config: RunnableConfig) -> str:
+async def search_by_image(image_description: str, config: RunnableConfig) -> str:
     """Find products similar to what's described in a customer's photo.
 
     Use this AFTER analyzing a customer's image. Pass the description
@@ -21,7 +21,7 @@ def search_by_image(image_description: str, config: RunnableConfig) -> str:
     """
     tenant_id = config["configurable"]["tenant_id"]
     repo = get_repository()
-    results = repo.find_similar(tenant_id, image_description)
+    results = await repo.find_similar(tenant_id, image_description)
 
     if not results:
         return "No similar products found. I can show you our full catalog instead."

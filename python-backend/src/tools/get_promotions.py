@@ -9,7 +9,7 @@ from src.repositories import get_repository
 
 
 @tool
-def get_promotions(config: RunnableConfig) -> str:
+async def get_promotions(config: RunnableConfig) -> str:
     """Get current special offers and promoted products.
 
     Use this when the customer asks about sales, deals, specials,
@@ -17,7 +17,7 @@ def get_promotions(config: RunnableConfig) -> str:
     """
     tenant_id = config["configurable"]["tenant_id"]
     repo = get_repository()
-    promos = repo.get_promotions(tenant_id)
+    promos = await repo.get_promotions(tenant_id)
 
     if not promos:
         return "No active promotions at the moment."
