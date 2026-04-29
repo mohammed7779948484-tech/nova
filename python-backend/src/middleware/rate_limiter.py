@@ -7,7 +7,7 @@ When the limit is exceeded, returns 429 with a Retry-After header.
 
 from __future__ import annotations
 
-import logging
+import structlog
 import time
 from collections import defaultdict
 
@@ -15,7 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Default: 60 requests per minute per tenant per IP
 DEFAULT_RATE_LIMIT = 60
@@ -71,9 +71,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         cutoff = now - self.window_seconds
 
         # Prune old timestamps
-        self._windows[key] = [
-            ts for ts in self._windows[key] if ts > cutoff
-        ]
+        self._windows[key] = [ts for ts in self._windows[key] if ts > cutoff]
 
         if len(self._windows[key]) >= self.rate_limit:
             return True
@@ -88,12 +86,13 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         tenant_id = self._get_tenant_id(request)
 
         if self._is_rate_limited(ip, tenant_id):
-            logger.info(
-                "rate_limit_exceeded ip=%s tenant=%s", ip, tenant_id,
-            )
+            logger.info("rate_limit_exceeded", ip=ip, tenant=tenant_id)
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Rate limit exceeded", "retry_after": self.window_seconds},
+                content={
+                    "detail": "Rate limit exceeded",
+                    "retry_after": self.window_seconds,
+                },
                 headers={"Retry-After": str(self.window_seconds)},
             )
 

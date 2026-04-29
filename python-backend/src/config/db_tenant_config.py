@@ -25,7 +25,7 @@ Usage:
 from __future__ import annotations
 
 import json
-import logging
+import structlog
 import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -36,7 +36,7 @@ from dotenv import load_dotenv
 # Ensure .env is loaded before reading env vars
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
@@ -83,13 +83,11 @@ class DBTenantConfig:
     def __init__(self):
         if not SUPABASE_URL:
             raise ValueError(
-                "SUPABASE_URL is not set. "
-                "Please add it to your .env file."
+                "SUPABASE_URL is not set. Please add it to your .env file."
             )
         if not SUPABASE_SERVICE_KEY:
             raise ValueError(
-                "SUPABASE_SERVICE_KEY is not set. "
-                "Please add it to your .env file."
+                "SUPABASE_SERVICE_KEY is not set. Please add it to your .env file."
             )
 
         self.base_url = SUPABASE_URL.rstrip("/")
@@ -104,7 +102,7 @@ class DBTenantConfig:
             headers=self.headers,
             timeout=30.0,
         )
-        logger.info("DBTenantConfig initialized — connected to %s", self.base_url)
+        logger.info("db_tenant_config_initialized", base_url=self.base_url)
 
     async def aclose(self) -> None:
         """Close the underlying httpx.AsyncClient.
@@ -185,12 +183,12 @@ class DBTenantConfig:
             rules = json.loads(rules)
 
         logger.debug(
-            "Loaded agent %s (%s) — %d rules, %d products, %d instructions",
-            agent.get("tenant_slug", "?"),
-            agent.get("name", "?"),
-            len(rules),
-            len(products or []),
-            len(instructions or []),
+            "agent_loaded",
+            tenant_slug=agent.get("tenant_slug", "?"),
+            name=agent.get("name", "?"),
+            rules_count=len(rules),
+            products_count=len(products or []),
+            instructions_count=len(instructions or []),
         )
 
         return DBAgentConfig(
@@ -269,7 +267,7 @@ class DBTenantConfig:
             List of agent row dicts from the agents table.
         """
         agents = await self._query_table("agents", {"is_active": "true"})
-        logger.debug("Listed %d active agents from DB", len(agents))
+        logger.debug("listed_active_agents", count=len(agents))
         return agents
 
     def agent_config_to_tenant_config(self, config: DBAgentConfig) -> dict:

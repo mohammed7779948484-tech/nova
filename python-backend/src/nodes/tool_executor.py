@@ -9,7 +9,7 @@ Multiple tool calls execute in parallel using asyncio.gather.
 from __future__ import annotations
 
 import asyncio
-import logging
+import structlog
 
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -18,7 +18,7 @@ from langgraph.types import Command
 from src.state.agent_state import SalesAgentState
 from src.tools import ALL_TOOLS
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Build a lookup map: tool_name → tool_function
 _TOOL_MAP = {t.name: t for t in ALL_TOOLS}

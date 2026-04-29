@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import logging
+import structlog
 from uuid import UUID
 
 import httpx
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ConversationService:
@@ -15,6 +15,7 @@ class ConversationService:
 
     def __init__(self) -> None:
         from src.config.settings import get_settings
+
         settings = get_settings()
 
         self.base_url = settings.supabase_url.rstrip("/")
@@ -84,7 +85,9 @@ class ConversationService:
             params={**count_params, "select": "id"},
             headers={**self.headers, "Prefer": "count=exact"},
         )
-        total = int(count_response.headers.get("content-range", "/").split("/")[-1] or 0)
+        total = int(
+            count_response.headers.get("content-range", "/").split("/")[-1] or 0
+        )
 
         return rows, total
 

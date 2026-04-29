@@ -9,7 +9,7 @@ Tenant config is loaded from Supabase DB (async) with YAML fallback.
 
 from __future__ import annotations
 
-import logging
+import structlog
 from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
@@ -20,7 +20,7 @@ from src.config.tenant_config import TenantConfig, async_get_tenant
 from src.state.agent_state import SalesAgentState
 from src.tools import ALL_TOOLS
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _build_system_prompt(
@@ -112,7 +112,11 @@ def _extract_topics(messages: list[BaseMessage], max_topics: int = 5) -> list[st
 
         words = content_lower.split()
         for word in words:
-            if len(word) > 3 and word not in seen and not word.startswith(("http", "@", "+")):
+            if (
+                len(word) > 3
+                and word not in seen
+                and not word.startswith(("http", "@", "+"))
+            ):
                 seen.add(word)
                 topics.append(content if len(content) < 60 else word)
                 if len(topics) >= max_topics:
@@ -186,7 +190,7 @@ def _ensure_model_registered(llm_svc: Any, tc: TenantConfig) -> None:
         return create_llm(tc)
 
     llm_svc.register_model(model_key, factory)
-    logger.info("registered_llm_model key=%s", model_key)
+    logger.info("registered_llm_model", key=model_key)
 
 
 async def assistant_node(
@@ -217,8 +221,10 @@ async def assistant_node(
     full_messages = [system] + messages
 
     logger.debug(
-        "assistant_node: tenant=%s, channel=%s, messages=%d",
-        tenant_id, channel, len(messages),
+        "assistant_node",
+        tenant=tenant_id,
+        channel=channel,
+        messages=len(messages),
     )
 
     result = await llm_service.call(
@@ -243,7 +249,7 @@ async def assistant_node(
     # Check for escalation triggers in the AI response
     escalation_reason = _should_escalate(result)
     if escalation_reason:
-        logger.info("assistant_escalating reason=%s", escalation_reason)
+        logger.info("assistant_escalating", reason=escalation_reason)
         return Command(
             update={
                 "messages": [result],

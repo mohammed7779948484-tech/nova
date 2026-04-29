@@ -1,6 +1,8 @@
 """WhatsApp webhook router."""
 
-import logging
+from __future__ import annotations
+
+import structlog
 import os
 
 from fastapi import APIRouter, Request, HTTPException
@@ -10,7 +12,7 @@ from src.channels.whatsapp.adapter import WhatsAppAdapter
 
 router = APIRouter()
 adapter = WhatsAppAdapter()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "your_verify_token_here")
 

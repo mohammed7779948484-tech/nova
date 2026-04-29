@@ -12,7 +12,7 @@ All I/O is async (httpx.AsyncClient) per project constitution Principle IV.
 from __future__ import annotations
 
 import json
-import logging
+import structlog
 import os
 import re
 import time
@@ -23,7 +23,7 @@ import httpx
 from src.models.product import Product
 from src.repositories.base import ProductRepository
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
@@ -34,16 +34,54 @@ _CACHE_TTL = 300
 # Common Russian and English suffixes for naive stemming.
 # Sorted longest-first so we strip the most specific ending.
 _RU_SUFFIXES = (
-    "ами", "ями", "ому", "ого", "ему", "его",
-    "ов", "ев", "ей", "ий", "ый", "ой",
-    "ам", "ям", "ах", "ях",
-    "ы", "и", "а", "я", "у", "ю", "е", "о",
+    "ами",
+    "ями",
+    "ому",
+    "ого",
+    "ему",
+    "его",
+    "ов",
+    "ев",
+    "ей",
+    "ий",
+    "ый",
+    "ой",
+    "ам",
+    "ям",
+    "ах",
+    "ях",
+    "ы",
+    "и",
+    "а",
+    "я",
+    "у",
+    "ю",
+    "е",
+    "о",
 )
 _EN_SUFFIXES = ("ing", "tion", "ies", "es", "ed", "ly", "er", "s")
 
 # Arabic suffixes/prefixes for light stemming.
 _AR_PREFIXES = ("ال", "وال", "بال", "كال", "فال", "لل")
-_AR_SUFFIXES = ("ها", "هم", "هن", "ك", "كما", "كم", "كن", "نا", "ه", "ها", "ي", "ان", "ين", "ون", "ات", "ة", "تى")
+_AR_SUFFIXES = (
+    "ها",
+    "هم",
+    "هن",
+    "ك",
+    "كما",
+    "كم",
+    "كن",
+    "نا",
+    "ه",
+    "ها",
+    "ي",
+    "ان",
+    "ين",
+    "ون",
+    "ات",
+    "ة",
+    "تى",
+)
 
 _MIN_STEM = 2  # don't strip if the remaining stem is shorter than this
 
@@ -58,7 +96,7 @@ def _stem(word: str) -> str:
     # Try Arabic prefixes first (longest match)
     for pfx in _AR_PREFIXES:
         if w.startswith(pfx) and len(w) - len(pfx) >= _MIN_STEM:
-            return w[len(pfx):]
+            return w[len(pfx) :]
 
     # Try Arabic suffixes
     for sfx in _AR_SUFFIXES:
@@ -90,9 +128,15 @@ def _tokenize(text: str) -> set[str]:
 def _product_tokens(p: Product) -> set[str]:
     """Build a set of stemmed tokens from all searchable product fields."""
     parts = (
-        p.name + " " + p.description + " " + p.category
-        + " " + " ".join(p.tags)
-        + " " + p.id
+        p.name
+        + " "
+        + p.description
+        + " "
+        + p.category
+        + " "
+        + " ".join(p.tags)
+        + " "
+        + p.id
     )
     return _tokenize(parts)
 
@@ -156,13 +200,11 @@ class DBProductRepository(ProductRepository):
     def __init__(self, ttl: int = _CACHE_TTL):
         if not SUPABASE_URL:
             raise ValueError(
-                "SUPABASE_URL is not set. "
-                "Please add it to your .env file."
+                "SUPABASE_URL is not set. Please add it to your .env file."
             )
         if not SUPABASE_SERVICE_KEY:
             raise ValueError(
-                "SUPABASE_SERVICE_KEY is not set. "
-                "Please add it to your .env file."
+                "SUPABASE_SERVICE_KEY is not set. Please add it to your .env file."
             )
 
         self.base_url = SUPABASE_URL.rstrip("/")
@@ -180,7 +222,7 @@ class DBProductRepository(ProductRepository):
         self._cache: dict[str, _CacheEntry] = {}
         self._ttl = ttl
         self._slug_to_agent_id: dict[str, str] = {}
-        logger.info("DBProductRepository initialized — connected to %s", self.base_url)
+        logger.info("DBProductRepository initialized", base_url=self.base_url)
 
     async def aclose(self) -> None:
         """Close the underlying httpx.AsyncClient.
@@ -224,7 +266,7 @@ class DBProductRepository(ProductRepository):
         """Fetch products from Supabase for the given tenant_slug."""
         agent_id = await self._get_agent_id(tenant_id)
         if not agent_id:
-            logger.warning("No agent found for tenant_slug='%s'", tenant_id)
+            logger.warning("No agent found", tenant_slug=tenant_id)
             return []
 
         rows = await self._query_table(
@@ -232,8 +274,9 @@ class DBProductRepository(ProductRepository):
             {"agent_id": agent_id, "is_available": "true"},
         )
         logger.debug(
-            "Loaded %d products for tenant_slug='%s'",
-            len(rows), tenant_id,
+            "Loaded products",
+            count=len(rows),
+            tenant_slug=tenant_id,
         )
         return [_row_to_product(row) for row in rows]
 

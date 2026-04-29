@@ -13,12 +13,12 @@ Supports:
 
 from __future__ import annotations
 
-import logging
+import structlog
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class GraphService:
@@ -46,6 +46,7 @@ class GraphService:
             return self._connection_pool
 
         from src.config.settings import get_settings
+
         settings = get_settings()
         database_url = settings.database_url
         if not database_url:
@@ -54,11 +55,16 @@ class GraphService:
 
         try:
             from psycopg_pool import AsyncConnectionPool
+
             self._connection_pool = AsyncConnectionPool(
                 database_url,
                 open=False,
                 max_size=10,
-                kwargs={"autocommit": True, "connect_timeout": 5, "prepare_threshold": None},
+                kwargs={
+                    "autocommit": True,
+                    "connect_timeout": 5,
+                    "prepare_threshold": None,
+                },
             )
             await self._connection_pool.open()
             logger.info("connection_pool_created")
@@ -75,18 +81,26 @@ class GraphService:
 
         pool = await self._get_connection_pool()
         from src.graphs.sales_graph import compile_with_postgres_async
+
         self._graph = await compile_with_postgres_async(pool)
         logger.info("graph_service_initialized")
 
     async def process_message(
-        self, tenant_slug: str, session_id: str, message: str, channel: str = "web",
+        self,
+        tenant_slug: str,
+        session_id: str,
+        message: str,
+        channel: str = "web",
     ) -> str:
         """Process a customer message through the LangGraph agent."""
         # Sanitize input before processing
         from src.core.sanitizer import sanitize_input, detect_prompt_injection
+
         message = sanitize_input(message)
         if detect_prompt_injection(message):
-            logger.warning("prompt_injection_detected session_id=%s tenant=%s", session_id, tenant_slug)
+            logger.warning(
+                "prompt_injection_detected", session_id=session_id, tenant=tenant_slug
+            )
 
         await self._ensure_graph()
         if self._graph is None:
@@ -105,9 +119,14 @@ class GraphService:
             # Check if the graph is currently interrupted (escalated)
             state = await self._graph.aget_state(config)
             if state.next:
-                logger.info("resuming_interrupted_graph session_id=%s next=%s", session_id, state.next)
+                logger.info(
+                    "resuming_interrupted_graph", session_id=session_id, next=state.next
+                )
                 from langgraph.types import Command
-                result = await self._graph.ainvoke(Command(resume=message), config=config)
+
+                result = await self._graph.ainvoke(
+                    Command(resume=message), config=config
+                )
             else:
                 result = await self._graph.ainvoke(input_data, config=config)
 
@@ -119,7 +138,7 @@ class GraphService:
                     if state.tasks and state.tasks[0].interrupts
                     else "Waiting for supervisor input."
                 )
-                logger.info("graph_interrupted session_id=%s", session_id)
+                logger.info("graph_interrupted", session_id=session_id)
                 return str(interrupt_value.get("message", str(interrupt_value)))
 
             response = result.get("messages", [])
@@ -134,7 +153,10 @@ class GraphService:
             return "I encountered an error. Please try again."
 
     async def resume_conversation(
-        self, session_id: str, supervisor_response: str, tenant_slug: str = "flower_shop",
+        self,
+        session_id: str,
+        supervisor_response: str,
+        tenant_slug: str = "flower_shop",
     ) -> dict[str, Any]:
         """Resume an interrupted/escalated conversation with a supervisor response.
 
@@ -154,17 +176,27 @@ class GraphService:
             # Check that the graph is actually paused
             state = await self._graph.aget_state(config)
             if not state.next:
-                return {"status": "error", "message": "Conversation is not in an interrupted state"}
+                return {
+                    "status": "error",
+                    "message": "Conversation is not in an interrupted state",
+                }
 
-            logger.info("resuming_conversation session_id=%s next_nodes=%s", session_id, state.next)
+            logger.info(
+                "resuming_conversation", session_id=session_id, next_nodes=state.next
+            )
 
             # Resume the graph with the supervisor's response
-            result = await self._graph.ainvoke(Command(resume=supervisor_response), config=config)
+            result = await self._graph.ainvoke(
+                Command(resume=supervisor_response), config=config
+            )
 
             # Check if graph was interrupted again after resume
             post_state = await self._graph.aget_state(config)
             if post_state.next:
-                return {"status": "escalated", "message": "Conversation still requires supervisor input"}
+                return {
+                    "status": "escalated",
+                    "message": "Conversation still requires supervisor input",
+                }
 
             # Extract AI response from the result
             response = result.get("messages", [])
@@ -177,13 +209,18 @@ class GraphService:
             return {"status": "active", "ai_response": ai_response}
 
         except GraphInterrupt:
-            logger.info("graph_interrupted_again session_id=%s", session_id)
-            return {"status": "escalated", "message": "Conversation interrupted again during processing"}
+            logger.info("graph_interrupted_again", session_id=session_id)
+            return {
+                "status": "escalated",
+                "message": "Conversation interrupted again during processing",
+            }
         except Exception:
-            logger.exception("resume_conversation_failed session_id=%s", session_id)
+            logger.exception("resume_conversation_failed", session_id=session_id)
             return {"status": "error", "message": "Failed to resume conversation"}
 
-    async def get_graph_state(self, session_id: str, tenant_slug: str = "flower_shop") -> dict[str, Any] | None:
+    async def get_graph_state(
+        self, session_id: str, tenant_slug: str = "flower_shop"
+    ) -> dict[str, Any] | None:
         """Get the current graph state for a conversation."""
         await self._ensure_graph()
         if self._graph is None:
@@ -191,12 +228,17 @@ class GraphService:
         config = self._make_config(session_id, tenant_slug)
         try:
             state = await self._graph.aget_state(config)
-            return {"next": list(state.next) if state.next else [], "values": dict(state.values) if state.values else {}}
+            return {
+                "next": list(state.next) if state.next else [],
+                "values": dict(state.values) if state.values else {},
+            }
         except Exception:
-            logger.exception("get_graph_state_failed session_id=%s", session_id)
+            logger.exception("get_graph_state_failed", session_id=session_id)
             return None
 
-    async def get_escalation_reason(self, session_id: str, tenant_slug: str = "flower_shop") -> str | None:
+    async def get_escalation_reason(
+        self, session_id: str, tenant_slug: str = "flower_shop"
+    ) -> str | None:
         """Extract escalation reason from an interrupted graph's state.
 
         Returns the reason string (e.g. 'customer_request', 'low_confidence')
@@ -213,7 +255,7 @@ class GraphService:
                 if isinstance(interrupt_value, dict):
                     return interrupt_value.get("reason")
         except Exception:
-            logger.exception("get_escalation_reason_failed session_id=%s", session_id)
+            logger.exception("get_escalation_reason_failed", session_id=session_id)
         return None
 
     async def shutdown(self) -> None:

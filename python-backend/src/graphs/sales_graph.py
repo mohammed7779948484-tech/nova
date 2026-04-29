@@ -17,7 +17,7 @@ if escalation needed → "escalate", otherwise → END.
 
 from __future__ import annotations
 
-import logging
+import structlog
 
 from langgraph.graph import StateGraph, START
 
@@ -26,7 +26,7 @@ from src.nodes.escalation import escalation_node
 from src.nodes.tool_executor import tool_executor_node
 from src.state.agent_state import SalesAgentState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def build_sales_graph() -> StateGraph:

@@ -11,7 +11,7 @@ and waits for a supervisor to resume via Command(resume=...).
 
 from __future__ import annotations
 
-import logging
+import structlog
 from typing import Literal
 
 from langchain_core.messages import AIMessage
@@ -20,7 +20,7 @@ from langgraph.types import Command, interrupt
 
 from src.state.agent_state import SalesAgentState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 async def escalation_node(
@@ -45,15 +45,17 @@ async def escalation_node(
 
     # interrupt() pauses the graph. The returned value is whatever
     # the supervisor passes when resuming via Command(resume=value).
-    supervisor_response = interrupt({
-        "reason": reason,
-        "message": "Waiting for supervisor input",
-    })
+    supervisor_response = interrupt(
+        {
+            "reason": reason,
+            "message": "Waiting for supervisor input",
+        }
+    )
 
     logger.info(
-        "escalation_resumed reason=%s supervisor_response_len=%d",
-        reason,
-        len(supervisor_response) if supervisor_response else 0,
+        "escalation_resumed",
+        reason=reason,
+        supervisor_response_len=len(supervisor_response) if supervisor_response else 0,
     )
 
     # Inject the supervisor's response as an AI message so the

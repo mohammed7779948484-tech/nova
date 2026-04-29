@@ -10,7 +10,7 @@ which are the primary method used in production.
 
 from __future__ import annotations
 
-import logging
+import structlog
 import time
 from functools import lru_cache
 from pathlib import Path
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 _tenant_cache: dict[str, tuple[TenantConfig, float]] = {}
 _TENANT_CACHE_TTL = 300
@@ -36,6 +36,7 @@ _TENANT_CACHE_TTL = 300
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
+
 
 class AgentConfig(BaseModel):
     """Agent personality and behaviour rules."""
@@ -78,6 +79,7 @@ class TenantConfig(BaseModel):
 # ---------------------------------------------------------------------------
 # Loader — YAML-based (legacy fallback)
 # ---------------------------------------------------------------------------
+
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     """Read and parse a YAML file."""
@@ -130,6 +132,7 @@ def _get_db_config() -> "DBTenantConfig":
     global _db_config
     if _db_config is None:
         from src.config.db_tenant_config import DBTenantConfig
+
         _db_config = DBTenantConfig()
     return _db_config
 
@@ -159,14 +162,10 @@ async def async_get_tenant(tenant_id: str) -> TenantConfig:
             return config
 
         logger.warning(
-            "Tenant '%s' not found in DB, falling back to YAML",
-            tenant_id,
+            "tenant_not_found_in_db_falling_back_to_yaml", tenant_id=tenant_id
         )
     except Exception:
-        logger.exception(
-            "DB lookup failed for tenant '%s', falling back to YAML",
-            tenant_id,
-        )
+        logger.exception("db_lookup_failed_falling_back_to_yaml", tenant_id=tenant_id)
 
     # Fallback to YAML
     return get_tenant(tenant_id)
@@ -185,30 +184,34 @@ async def async_list_tenants() -> list[dict[str, Any]]:
 
         result = []
         for agent in agents:
-            result.append({
-                "id": agent["tenant_slug"],
-                "business_name": agent["business_name"],
-                "agent_name": agent["name"],
-                "agent_role": agent["role"],
-                "language": agent.get("language", "en"),
-                "provider": f"{agent.get('llm_provider', 'openai')}/{agent.get('llm_model', 'LongCat-Flash-Chat')}",
-            })
+            result.append(
+                {
+                    "id": agent["tenant_slug"],
+                    "business_name": agent["business_name"],
+                    "agent_name": agent["name"],
+                    "agent_role": agent["role"],
+                    "language": agent.get("language", "en"),
+                    "provider": f"{agent.get('llm_provider', 'openai')}/{agent.get('llm_model', 'LongCat-Flash-Chat')}",
+                }
+            )
         return result
 
     except Exception:
-        logger.exception("DB listing failed, falling back to YAML")
+        logger.exception("db_listing_failed_falling_back_to_yaml")
         # Fallback to YAML listing
         result = []
         for tid in list_tenants():
             tc = get_tenant(tid)
-            result.append({
-                "id": tid,
-                "business_name": tc.business_name,
-                "agent_name": tc.agent.name,
-                "agent_role": tc.agent.role,
-                "language": tc.language,
-                "provider": f"{tc.llm.provider}/{tc.llm.model}",
-            })
+            result.append(
+                {
+                    "id": tid,
+                    "business_name": tc.business_name,
+                    "agent_name": tc.agent.name,
+                    "agent_role": tc.agent.role,
+                    "language": tc.language,
+                    "provider": f"{tc.llm.provider}/{tc.llm.model}",
+                }
+            )
         return result
 
 

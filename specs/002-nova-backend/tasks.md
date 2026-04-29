@@ -427,26 +427,26 @@ Every test task MUST include before execution:
 
 ### Tests for User Story 7 (MANDATORY — PDCA TDD Enforced) 🚨
 
-- [ ] T058 [P] [US7] Write test for logging setup in `python-backend/tests/unit/test_logging.py`.
+- [X] T058 [P] [US7] Write test for logging setup in `python-backend/tests/unit/test_logging.py`.
   - **Called Shot**: `test_log_includes_correlation_id` — invoke the logging middleware, verify log output contains `correlation_id` field. Expected RED: `ImportError: cannot import name 'setup_logging' from 'src.core.logging_config'`.
   - **Called Shot**: `test_log_includes_tenant_id` — make a request with tenant context, verify log contains `tenant_id`. Expected RED: same ImportError.
 
 ### Implementation for User Story 7
 
-- [ ] T059 [US7] Create `python-backend/src/core/logging_config.py` (~70 lines):
+- [X] T059 [US7] Create `python-backend/src/core/logging_config.py` (~70 lines):
   1. `import structlog`. Configure processors: `add_log_level`, `TimeStamper(fmt="iso")`, `JSONRenderer()` for production / `ConsoleRenderer()` for development.
   2. `def setup_logging(log_format: str = "console")` — configures structlog + stdlib logging integration.
   3. Call from `python-backend/src/app.py` lifespan startup.
 
-- [ ] T060 [US7] Create `python-backend/src/middleware/correlation.py` (~40 lines):
+- [X] T060 [US7] Create `python-backend/src/middleware/correlation.py` (~40 lines):
   1. `class CorrelationMiddleware(BaseHTTPMiddleware)` — generates UUID4 correlation ID per request, stores in `contextvars.ContextVar`.
   2. Adds `X-Correlation-ID` response header.
   3. structlog binds `correlation_id` via context processor.
 
-- [ ] T061 [US7] Replace all `logging.getLogger()` calls across codebase with `structlog.get_logger()`. Files to update: `src/repositories/db_repo.py`, `src/config/db_tenant_config.py`, `src/config/tenant_config.py`, `src/nodes/assistant.py`, `src/channels/whatsapp/router.py`. Use `structlog.get_logger()` and `logger.info(event, key=value)` style.
+- [X] T061 [US7] Replace all `logging.getLogger()` calls across codebase with `structlog.get_logger()`. Files to update: `src/repositories/db_repo.py`, `src/config/db_tenant_config.py`, `src/config/tenant_config.py`, `src/nodes/assistant.py`, `src/channels/whatsapp/router.py`. Use `structlog.get_logger()` and `logger.info(event, key=value)` style.
   Add `structlog` to `python-backend/pyproject.toml` dependencies.
 
-- [ ] T062 [US7] Run all US7 tests. All GREEN.
+- [X] T062 [US7] Run all US7 tests. All GREEN.
 
 **Checkpoint**: Structured logging active. Every request traceable by correlation ID.
 

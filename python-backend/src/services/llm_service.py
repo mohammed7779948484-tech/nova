@@ -8,7 +8,7 @@ create_llm() produces a tenant-specific model.
 from __future__ import annotations
 
 import asyncio
-import logging
+import structlog
 from typing import Any
 
 from langchain_core.messages import BaseMessage
@@ -20,7 +20,7 @@ from tenacity import (
     wait_exponential,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 GRACEFUL_FAILURE_MESSAGE = (
     "I'm experiencing technical difficulties. Please try again shortly."
@@ -76,7 +76,10 @@ class LLMService:
         reraise=True,
     )
     async def _invoke_with_retry(
-        self, model: Any, messages: list[BaseMessage], config: RunnableConfig | None = None,
+        self,
+        model: Any,
+        messages: list[BaseMessage],
+        config: RunnableConfig | None = None,
     ) -> BaseMessage:
         """Invoke a model with automatic retry on transient errors."""
         return await model.ainvoke(messages, config=config)
@@ -94,10 +97,12 @@ class LLMService:
             next_index = (self._current_model_index + 1) % len(self._models)
             old_name = self._models[self._current_model_index]["name"]
             new_name = self._models[next_index]["name"]
-            logger.warning("switching_model from=%s to=%s", old_name, new_name)
+            logger.warning("switching_model", from_model=old_name, to_model=new_name)
 
             self._current_model_index = next_index
-            self._current_model = self._build_model(next_index, self._bound_tools or None)
+            self._current_model = self._build_model(
+                next_index, self._bound_tools or None
+            )
             return True
         except Exception:
             logger.exception("model_switch_failed")
@@ -145,16 +150,16 @@ class LLMService:
             except Exception:
                 models_tried += 1
                 logger.exception(
-                    "llm_call_failed model=%s tried=%d total=%d",
-                    self._models[self._current_model_index]["name"],
-                    models_tried,
-                    total,
+                    "llm_call_failed",
+                    model=self._models[self._current_model_index]["name"],
+                    tried=models_tried,
+                    total=total,
                 )
 
                 if not self._switch_to_next_model():
                     break
 
-        logger.error("all_models_exhausted tried=%d", models_tried)
+        logger.error("all_models_exhausted", tried=models_tried)
         return GRACEFUL_FAILURE_MESSAGE
 
 
