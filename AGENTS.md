@@ -15,11 +15,10 @@ at `specs/002-nova-backend/plan.md`
 | 5 | AI Resilience & Context | T030-T035 | ✅ Complete |
 | 6 | Human-in-the-Loop | T036-T044 | ✅ Complete |
 | 7 | WhatsApp Channel | T045-T051 | ⏸️ DEFERRED (requires WhatsApp Cloud API + phone verification) |
-| 10 | Production Readiness | T063-T068 | ✅ Complete |
-| 9 | Structured Logging | T058-T062 | ✅ Complete |
-| 11 | Polish & Cross-Cutting | T069-T073 | ✅ Complete |
 | 8 | Rate Limiting & Input Safety | T052-T057 | ✅ Complete |
-| 9+ | Structured Logging / Production | T058+ | 🔲 Not started |
+| 9 | Structured Logging | T058-T062 | ✅ Complete |
+| 10 | Production Readiness | T063-T068 | ✅ Complete |
+| 11 | Polish & Cross-Cutting | T069-T073 | ✅ Complete |
 
 **Total tests: 83 — all using real DB (Supabase PostgreSQL) + real LLM (LongCat), NO mocks.**
 
@@ -84,7 +83,7 @@ python-backend/
 ├── src/
 │   ├── app.py                  # FastAPI app, lifespan, router mounts, middleware registration
 │   ├── config/                 # Settings (BaseSettings), tenant config (caching), LLM provider, db_tenant_config
-│   ├── core/                   # Core utilities: sanitizer.py (input sanitization + injection detection)
+│   ├── core/                   # Core utilities: logging_config.py (structlog), sanitizer.py (input sanitization + injection detection)
 │   ├── services/               # Business logic: graph_service, llm_service, conversation_service
 │   ├── channels/               # Routers + adapters (web/, whatsapp/, admin/)
 │   ├── graphs/sales_graph.py   # LangGraph StateGraph assembly + compile_with_postgres_async()
@@ -93,11 +92,11 @@ python-backend/
 │   ├── models/                 # Pydantic schemas, enums (ConversationStatus, MessageRole, EscalationReason), lifecycle
 │   ├── repositories/           # Data access: db_repo (async httpx), json_repo, base
 │   ├── tools/                  # LangChain tools (search_products, get_promotions, get_product_details, search_by_image)
-│   └── middleware/             # RateLimiterMiddleware (sliding window, per-tenant/IP)
+│   └── middleware/             # RateLimiterMiddleware (sliding window), CorrelationMiddleware (request tracing)
 ├── tests/
 │   ├── conftest.py             # Shared fixtures (sets ENVIRONMENT=test)
 │   ├── test_memory_arabic.py   # Arabic language memory test
-│   └── unit/                   # Unit + integration tests by feature (75 total)
+│   └── unit/                   # Unit + integration tests by feature (83 total)
 ├── database/                   # SQL migration files (tenants, agents, products, conversations, messages, etc.)
 ├── tenants/                    # Per-tenant config (flower_shop, tech_store, restaurant_test)
 └── pyproject.toml              # Dependencies + tool config
@@ -155,14 +154,17 @@ async def process_message(self, tenant_slug: str, message: str) -> str:
 ```
 
 ### Logging
-Use stdlib `logging.getLogger(__name__)`. Use `%`-formatting in log calls (lazy eval), not f-strings:
+Use `structlog.get_logger(__name__)` for structured logging. Use keyword arguments for context fields:
 
 ```python
-logger = logging.getLogger(__name__)
+import structlog
+logger = structlog.get_logger(__name__)
 logger.info("connection_pool_created")
-logger.warning("switching_model from=%s to=%s", old_name, new_name)
-logger.exception("llm_call_failed model=%s tried=%d", name, count)
+logger.warning("switching_model", from_model=old_name, to_model=new_name)
+logger.exception("llm_call_failed", model=name, tried=count)
 ```
+
+Logging is configured in `src/core/logging_config.py` via `setup_logging(log_format)`. In production set `LOG_FORMAT=json` for machine-readable output; in development use `LOG_FORMAT=console` for human-readable output. Correlation IDs are managed by `CorrelationMiddleware` and stored in `contextvars` so structlog includes them automatically.
 
 ### Error Handling
 - Catch exceptions and return graceful fallbacks, don't let errors propagate to the caller
@@ -246,7 +248,7 @@ from src.core.sanitizer import sanitize_input, detect_prompt_injection
 
 message = sanitize_input(message)  # strip HTML, truncate to 4000, normalize whitespace
 if detect_prompt_injection(message):
-    logger.warning("prompt_injection_detected session_id=%s tenant=%s", session_id, tenant_slug)
+    logger.warning("prompt_injection_detected", session_id=session_id, tenant=tenant_slug)
 ```
 
 ### Rate limiting (Phase 8)

@@ -11,14 +11,18 @@ Usage:
 
 from __future__ import annotations
 
-import json
-import structlog
 import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import httpx
+import structlog
 from dotenv import load_dotenv
+
+from src.config.db_tenant_config_helpers import (
+    agent_config_to_tenant_config,
+    build_agent_config,
+)
 
 # Ensure .env is loaded before reading env vars
 load_dotenv()
@@ -165,45 +169,11 @@ class DBTenantConfig:
             select="instruction",
         )
 
-        rules = agent.get("rules", [])
-        if isinstance(rules, str):
-            rules = json.loads(rules)
-
-        logger.debug(
-            "agent_loaded",
-            tenant_slug=agent.get("tenant_slug", "?"),
-            name=agent.get("name", "?"),
-            rules_count=len(rules),
-            products_count=len(products or []),
-            instructions_count=len(instructions or []),
-        )
-
-        return DBAgentConfig(
-            agent_id=agent["id"],
-            tenant_id=agent["tenant_id"],
-            tenant_slug=agent["tenant_slug"],
-            business_name=agent["business_name"],
-            language=agent["language"],
-            name=agent["name"],
-            role=agent["role"],
-            personality=agent.get("personality", ""),
-            rules=rules,
-            llm_provider=agent.get("llm_provider", "openai"),
-            llm_model=agent.get("llm_model", "LongCat-Flash-Chat"),
-            llm_temperature=float(agent.get("llm_temperature", 0.7)),
-            llm_max_tokens=int(agent.get("llm_max_tokens", 1024)),
-            image_search=agent.get("image_search", True),
-            promotions=agent.get("promotions", True),
-            upsell=agent.get("upsell", True),
-            products=products or [],
-            instructions=[i["instruction"] for i in (instructions or [])],
-        )
+        kwargs = build_agent_config(agent, products, instructions)
+        return DBAgentConfig(**kwargs)
 
     async def get_agent_by_slug(self, tenant_slug: str) -> Optional[DBAgentConfig]:
         """Find an agent by its tenant slug (e.g. 'flower_shop').
-
-        This mirrors the YAML-based get_tenant(tenant_id) interface,
-        allowing lookup by the same slug used in the file-based system.
 
         Args:
             tenant_slug: The tenant slug (e.g. 'flower_shop').
@@ -226,9 +196,6 @@ class DBTenantConfig:
     ) -> Optional[DBAgentConfig]:
         """Find which agent owns this WhatsApp phone number.
 
-        Used by webhook handlers to route incoming messages to the
-        correct agent based on the phone number that received them.
-
         Args:
             phone_number_id: The WhatsApp phone number ID.
 
@@ -248,8 +215,6 @@ class DBTenantConfig:
     async def list_all_agents(self) -> list[dict[str, Any]]:
         """List all active agents with their tenant info.
 
-        Used by the /api/tenants endpoint to list all configured agents.
-
         Returns:
             List of agent row dicts from the agents table.
         """
@@ -260,8 +225,7 @@ class DBTenantConfig:
     def agent_config_to_tenant_config(self, config: DBAgentConfig) -> dict:
         """Convert DBAgentConfig to the dict format expected by TenantConfig.
 
-        This allows DB-loaded configs to be used with the existing
-        create_llm() and other functions that expect TenantConfig fields.
+        Delegates to the helper function in db_tenant_config_helpers.
 
         Args:
             config: DBAgentConfig loaded from database.
@@ -269,26 +233,4 @@ class DBTenantConfig:
         Returns:
             Dict matching TenantConfig Pydantic model structure.
         """
-        return {
-            "tenant_id": config.tenant_slug,
-            "business_name": config.business_name,
-            "language": config.language,
-            "agent": {
-                "name": config.name,
-                "role": config.role,
-                "personality": config.personality,
-                "rules": config.rules,
-            },
-            "llm": {
-                "provider": config.llm_provider,
-                "model": config.llm_model,
-                "temperature": config.llm_temperature,
-                "max_tokens": config.llm_max_tokens,
-            },
-            "features": {
-                "image_search": config.image_search,
-                "promotions": config.promotions,
-                "upsell": config.upsell,
-            },
-            "instructions": config.instructions,
-        }
+        return agent_config_to_tenant_config(config)

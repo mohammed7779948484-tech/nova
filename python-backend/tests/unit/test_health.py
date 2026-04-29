@@ -24,6 +24,31 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 
+async def _get_pool():
+    """Try to get a real connection pool; skip if unavailable."""
+    from src.services.graph_service import graph_service
+
+    try:
+        pool = await graph_service._get_connection_pool()
+        if pool is None:
+            pytest.skip("DB unreachable — psycopg_pool returned None")
+        return pool
+    except Exception as exc:
+        pytest.skip(f"psycopg_pool unavailable: {exc}")
+
+
+async def _close_pool_safely(pool) -> None:
+    """Close pool without hanging — uses a timeout guard."""
+    import asyncio
+
+    try:
+        await asyncio.wait_for(pool.close(), timeout=5)
+    except asyncio.TimeoutError:
+        pass
+    except Exception:
+        pass
+
+
 @pytest.mark.asyncio
 async def test_health_returns_ok_when_db_connected():
     """With real connection pool, GET /health returns 200 with full shape."""
@@ -31,17 +56,19 @@ async def test_health_returns_ok_when_db_connected():
     from src.services.graph_service import graph_service
 
     original_pool = graph_service._connection_pool
-    try:
-        await graph_service._get_connection_pool()
-    except Exception:
-        pytest.skip("psycopg_pool unavailable or DB unreachable on this platform")
+    pool = await _get_pool()
 
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/health")
     finally:
-        graph_service._connection_pool = original_pool
+        # Close the pool we created and restore original
+        if original_pool is None:
+            await _close_pool_safely(pool)
+            graph_service._connection_pool = None
+        else:
+            graph_service._connection_pool = original_pool
 
     assert resp.status_code == 200
     body = resp.json()
@@ -99,17 +126,18 @@ async def test_health_uptime_is_numeric():
     from src.services.graph_service import graph_service
 
     original_pool = graph_service._connection_pool
-    try:
-        await graph_service._get_connection_pool()
-    except Exception:
-        pytest.skip("psycopg_pool unavailable or DB unreachable on this platform")
+    pool = await _get_pool()
 
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/health")
     finally:
-        graph_service._connection_pool = original_pool
+        if original_pool is None:
+            await _close_pool_safely(pool)
+            graph_service._connection_pool = None
+        else:
+            graph_service._connection_pool = original_pool
 
     body = resp.json()
     assert isinstance(body["uptime_seconds"], (int, float))
