@@ -1,0 +1,62 @@
+[
+  {
+    "id": "dish-001",
+    "name": "برجر كلاسيك",
+    "description": "برجر لحم مشوي مع الخس والطماطم والبصل والصلصة الخاصة",
+    "price": 25,
+    "currency": "SAR",
+    "category": "burgers",
+    "image_url": "",
+    "tags": ["برجر", "لحم", "كلاسيك", "burger", "classic"],
+    "is_promoted": true,
+    "promotion_text": "عرض خاص: برجر كلاسيك + بطاطس مقلية بخصم 20%"
+  },
+  {
+    "id": "dish-002",
+    "name": "بيتزا مارغريتا",
+    "description": "بيتزا إيطالية أصلية بالجبن الموزاريلا والطماطم الطازجة والريحان",
+    "price": 35,
+    "currency": "SAR",
+    "category": "pizza",
+    "image_url": "",
+    "tags": ["بيتزا", "جبن", "إيطالي", "pizza", "margherita"],
+    "is_promoted": false,
+    "promotion_text": ""
+  },
+  {
+    "id": "dish-003",
+    "name": "شاورما دجاج",
+    "description": "شاورما دجاج طازجة مع الخضار والصلصة في خبز عربي طري",
+    "price": 18,
+    "currency": "SAR",
+    "category": "wraps",
+    "image_url": "",
+    "tags": ["شاورما", "دجاج", "wrap", "shawarma", "chicken"],
+    "is_promoted": true,
+    "promotion_text": "الأكثر مبيعاً: شاورما الدجاج الشهية"
+  },
+  {
+    "id": "dish-004",
+    "name": "سلطة سيزر",
+    "description": "سلطة سيزر طازجة مع الدجاج المشوي والبارميزان وخبز محمص",
+    "price": 22,
+    "currency": "SAR",
+    "category": "salads",
+    "image_url": "",
+    "tags": ["سلطة", "سيزر", "دجاج", "salad", "caesar"],
+    "is_promoted": false,
+    "promotion_text": ""
+  },
+  {
+    "id": "dish-005",
+    "name": "مشروب بارد",
+    "description": "عصير ليمون طازج أو مشروب غازي بارد",
+    "price": 8,
+    "currency": "SAR",
+    "category": "drinks",
+    "image_url": "",
+    "tags": ["مشروب", "عصير", "بارد", "drink", "juice"],
+    "is_promoted": false,
+    "promotion_text": ""
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "sales_agent": "./graph.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.12",
+  "pip_installer": "uv"
+}

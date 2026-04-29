@@ -1,0 +1,178 @@
+[
+    {
+        "id": "bouquet-001",
+        "name": "Классические Красные Розы",
+        "description": "Элегантный букет из 25 красных роз с зеленью эвкалипта. Идеально для романтических поводов.",
+        "price": 15000,
+        "currency": "KZT",
+        "category": "roses",
+        "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=400",
+        "tags": [
+            "розы",
+            "красные",
+            "романтика",
+            "классика",
+            "букет",
+            "roses",
+            "red"
+        ],
+        "is_promoted": true,
+        "promotion_text": "🌹 Хит недели! Скидка 20% — 12 000 тг вместо 15 000 тг"
+    },
+    {
+        "id": "bouquet-002",
+        "name": "Весенний Микс",
+        "description": "Яркий букет из тюльпанов, нарциссов и ирисов. Поднимает настроение мгновенно!",
+        "price": 12000,
+        "currency": "KZT",
+        "category": "mixed",
+        "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=400",
+        "tags": [
+            "тюльпаны",
+            "весна",
+            "микс",
+            "яркий",
+            "букет",
+            "tulips",
+            "spring"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "bouquet-003",
+        "name": "Пионы Нежность",
+        "description": "Роскошный букет из 15 розовых пионов. Нежный аромат и потрясающий вид.",
+        "price": 22000,
+        "currency": "KZT",
+        "category": "peonies",
+        "image_url": "https://images.unsplash.com/photo-1562690868-60bbe7293e94?w=400",
+        "tags": [
+            "пионы",
+            "розовые",
+            "нежность",
+            "люкс",
+            "букет",
+            "peonies",
+            "pink"
+        ],
+        "is_promoted": true,
+        "promotion_text": "💐 Сезон пионов! Успейте заказать пока свежие"
+    },
+    {
+        "id": "bouquet-004",
+        "name": "Белое Облако",
+        "description": "Воздушный букет из белых хризантем, гипсофилы и эустомы. Для свадеб и торжеств.",
+        "price": 18000,
+        "currency": "KZT",
+        "category": "wedding",
+        "image_url": "https://images.unsplash.com/photo-1563241527-3004b7be0ffd?w=400",
+        "tags": [
+            "белые",
+            "свадьба",
+            "хризантемы",
+            "торжество",
+            "букет",
+            "white",
+            "wedding"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "bouquet-005",
+        "name": "Солнечный День",
+        "description": "Жизнерадостный букет из подсолнухов и жёлтых роз. Отличный подарок для друзей.",
+        "price": 10000,
+        "currency": "KZT",
+        "category": "sunflowers",
+        "image_url": "https://images.unsplash.com/photo-1551386340-55a0b074a1ac?w=400",
+        "tags": [
+            "подсолнухи",
+            "жёлтые",
+            "яркий",
+            "друзьям",
+            "букет",
+            "sunflowers",
+            "yellow"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "bouquet-006",
+        "name": "Корзина Изобилия",
+        "description": "Большая цветочная корзина с розами, лилиями, альстромериями. Роскошный корпоративный подарок.",
+        "price": 35000,
+        "currency": "KZT",
+        "category": "premium",
+        "image_url": "https://images.unsplash.com/photo-1471696035578-3d8c78d99571?w=400",
+        "tags": [
+            "корзина",
+            "премиум",
+            "корпоративный",
+            "лилии",
+            "букет",
+            "premium",
+            "basket"
+        ],
+        "is_promoted": true,
+        "promotion_text": "🎁 Идеальный корпоративный подарок! Бесплатная доставка"
+    },
+    {
+        "id": "bouquet-007",
+        "name": "Лавандовый Сон",
+        "description": "Букет из лаванды, сиреневых роз и эустомы. Нежный и ароматный.",
+        "price": 14000,
+        "currency": "KZT",
+        "category": "lavender",
+        "image_url": "https://images.unsplash.com/photo-1468327768560-75b778cbb551?w=400",
+        "tags": [
+            "лаванда",
+            "сиреневый",
+            "ароматный",
+            "нежный",
+            "букет",
+            "lavender",
+            "purple"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "acc-001",
+        "name": "Стеклянная Ваза",
+        "description": "Элегантная стеклянная ваза 25 см. Идеальное дополнение к любому букету.",
+        "price": 5000,
+        "currency": "KZT",
+        "category": "accessories",
+        "image_url": "https://images.unsplash.com/photo-1581783898377-1c85bf937427?w=400",
+        "tags": [
+            "ваза",
+            "стекло",
+            "аксессуар",
+            "vase",
+            "glass"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "acc-002",
+        "name": "Бельгийский Шоколад",
+        "description": "Коробка бельгийского шоколада 200г. Отличное дополнение к цветам!",
+        "price": 4500,
+        "currency": "KZT",
+        "category": "accessories",
+        "image_url": "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=400",
+        "tags": [
+            "шоколад",
+            "подарок",
+            "дополнение",
+            "chocolate",
+            "gift"
+        ],
+        "is_promoted": true,
+        "promotion_text": "🍫 Добавьте к букету со скидкой 30%!"
+    }
+]

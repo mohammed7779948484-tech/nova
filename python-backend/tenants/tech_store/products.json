@@ -1,0 +1,114 @@
+[
+    {
+        "id": "phone-001",
+        "name": "iPhone 16 Pro",
+        "description": "Apple iPhone 16 Pro 256GB. A18 Pro chip, 48MP camera system, titanium design, all-day battery.",
+        "price": 999,
+        "currency": "USD",
+        "category": "phones",
+        "image_url": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400",
+        "tags": [
+            "iphone",
+            "apple",
+            "smartphone",
+            "premium",
+            "camera",
+            "titanium"
+        ],
+        "is_promoted": true,
+        "promotion_text": "📱 Trade-in your old phone — save up to $300!"
+    },
+    {
+        "id": "phone-002",
+        "name": "Samsung Galaxy S24 Ultra",
+        "description": "Samsung Galaxy S24 Ultra 512GB. Snapdragon 8 Gen 3, 200MP camera, S Pen, titanium frame.",
+        "price": 1299,
+        "currency": "USD",
+        "category": "phones",
+        "image_url": "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400",
+        "tags": [
+            "samsung",
+            "galaxy",
+            "android",
+            "premium",
+            "s-pen",
+            "camera"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "laptop-001",
+        "name": "MacBook Pro 14\" M4 Pro",
+        "description": "Apple MacBook Pro 14\" with M4 Pro chip, 18GB RAM, 512GB SSD. Perfect for developers and creators.",
+        "price": 1999,
+        "currency": "USD",
+        "category": "laptops",
+        "image_url": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400",
+        "tags": [
+            "macbook",
+            "apple",
+            "laptop",
+            "developer",
+            "creator",
+            "m4"
+        ],
+        "is_promoted": true,
+        "promotion_text": "💻 Back to School: Free AirPods with MacBook purchase!"
+    },
+    {
+        "id": "laptop-002",
+        "name": "Dell XPS 15",
+        "description": "Dell XPS 15 with Intel Core Ultra 7, 32GB RAM, 1TB SSD, OLED display. Windows powerhouse.",
+        "price": 1799,
+        "currency": "USD",
+        "category": "laptops",
+        "image_url": "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400",
+        "tags": [
+            "dell",
+            "xps",
+            "laptop",
+            "windows",
+            "oled",
+            "intel"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "audio-001",
+        "name": "AirPods Pro 3",
+        "description": "Apple AirPods Pro 3 with active noise cancellation, spatial audio, and USB-C charging.",
+        "price": 249,
+        "currency": "USD",
+        "category": "audio",
+        "image_url": "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=400",
+        "tags": [
+            "airpods",
+            "apple",
+            "earbuds",
+            "noise-cancelling",
+            "wireless"
+        ],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "acc-t001",
+        "name": "Anker 65W USB-C Charger",
+        "description": "Compact GaN charger with 65W output. Charges laptop and phone simultaneously.",
+        "price": 35,
+        "currency": "USD",
+        "category": "accessories",
+        "image_url": "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=400",
+        "tags": [
+            "charger",
+            "usb-c",
+            "anker",
+            "fast-charging",
+            "accessory"
+        ],
+        "is_promoted": true,
+        "promotion_text": "⚡ Bundle deal: Add to any purchase for just $25!"
+    }
+]
