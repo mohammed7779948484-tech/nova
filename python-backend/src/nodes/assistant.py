@@ -10,7 +10,7 @@ Tenant config is loaded from Supabase DB (async) with YAML fallback.
 from __future__ import annotations
 
 import logging
-from typing import Literal
+from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -166,6 +166,29 @@ def _should_escalate(ai_message: AIMessage) -> str | None:
     return None
 
 
+def _ensure_model_registered(llm_svc: Any, tc: TenantConfig) -> None:
+    """Ensure the LLM model for this tenant is registered with the service.
+
+    On first call for a given model name, registers a factory that
+    creates a ChatOpenAI instance from the tenant's LLM config.
+    Subsequent calls with the same model name are no-ops.
+    """
+    model_key = f"{tc.llm.provider}/{tc.llm.model}"
+
+    # Check if already registered
+    for entry in llm_svc._models:
+        if entry["name"] == model_key:
+            return
+
+    from src.config.llm_provider import create_llm
+
+    def factory():
+        return create_llm(tc)
+
+    llm_svc.register_model(model_key, factory)
+    logger.info("registered_llm_model key=%s", model_key)
+
+
 async def assistant_node(
     state: SalesAgentState,
     config: RunnableConfig,
@@ -183,6 +206,9 @@ async def assistant_node(
     tenant_id = config["configurable"]["tenant_id"]
 
     tc = await async_get_tenant(tenant_id)
+
+    # Ensure LLM model is registered before calling
+    _ensure_model_registered(llm_service, tc)
 
     messages = state.get("messages", [])
 

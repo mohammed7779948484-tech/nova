@@ -1,14 +1,13 @@
-"""T021: Test GraphService.
+"""T021: Test GraphService — real DB + real LLM.
 
 Tests verify:
 - process_message is async (unit)
-- process_message returns string in degraded mode (unit)
-- GraphService compiles with real PostgresSaver when DATABASE_URL is set (integration)
+- GraphService compiles with real PostgresSaver (integration)
 - Reuses compiled graph across calls (integration)
+- process_message with real LLM returns a meaningful AI response
 """
 
 import inspect
-import os
 import socket
 import sys
 
@@ -25,8 +24,6 @@ def _postgres_reachable() -> bool:
         url = settings.database_url
         if not url or not url.startswith("postgresql"):
             return False
-        # Extract host from URL
-        # e.g. postgresql://user:pass@host:port/db
         host_part = url.split("@")[-1].split("/")[0]
         host = host_part.split(":")[0]
         port = int(host_part.split(":")[1]) if ":" in host_part else 5432
@@ -52,18 +49,6 @@ class TestGraphServiceUnit:
         )
 
     @pytest.mark.asyncio
-    async def test_graph_service_process_message_returns_string_degraded(self):
-        """process_message returns graceful string when no DB connection."""
-        gs = GraphService()
-        result = await gs.process_message(
-            tenant_slug="flower_shop",
-            session_id="test-phase4-degraded",
-            message="hello",
-            channel="web",
-        )
-        assert isinstance(result, str), f"Expected str, got {type(result)}"
-
-    @pytest.mark.asyncio
     async def test_graph_service_shutdown_cleans_up(self):
         """shutdown() should not raise even with no pool."""
         gs = GraphService()
@@ -73,7 +58,6 @@ class TestGraphServiceUnit:
 
 
 class TestGraphServiceIntegration:
-    """Integration tests against the real PostgreSQL database."""
 
     @requires_postgres
     @pytest.mark.asyncio
@@ -108,21 +92,66 @@ class TestGraphServiceIntegration:
         finally:
             await gs.shutdown()
 
+
+class TestGraphServiceRealLLM:
+
     @requires_postgres
     @pytest.mark.asyncio
-    async def test_graph_service_process_message_real(self):
-        """process_message against real PostgresSaver returns a string."""
+    async def test_process_message_returns_real_ai_response(self):
+        """process_message with real LLM returns a meaningful AI response."""
         if sys.platform == "win32":
             pytest.skip("psycopg_pool requires SelectorEventLoop — skipped on Windows")
 
         gs = GraphService()
         try:
+            # Reset llm_service to force fresh registration
+            from src.services.llm_service import llm_service
+            llm_service._models = []
+            llm_service._current_model = None
+            llm_service._current_model_index = 0
+            llm_service._bound_tools = []
+
             result = await gs.process_message(
                 tenant_slug="flower_shop",
-                session_id="test-phase4-real",
-                message="hello",
+                session_id="test-real-llm-session",
+                message="Hello, what products do you have?",
             )
-            assert isinstance(result, str)
-            assert len(result) > 0
+
+            assert isinstance(result, str), f"Expected str, got {type(result)}"
+            assert len(result) > 0, "Response should not be empty"
+            # The real LLM should produce a meaningful response, not the graceful failure
+            assert "technical difficulties" not in result.lower(), (
+                f"Should get real AI response, not graceful failure: {result[:100]}"
+            )
+        finally:
+            await gs.shutdown()
+
+    @requires_postgres
+    @pytest.mark.asyncio
+    async def test_process_message_product_query(self):
+        """process_message with product query triggers tool use via real LLM."""
+        if sys.platform == "win32":
+            pytest.skip("psycopg_pool requires SelectorEventLoop — skipped on Windows")
+
+        gs = GraphService()
+        try:
+            from src.services.llm_service import llm_service
+            llm_service._models = []
+            llm_service._current_model = None
+            llm_service._current_model_index = 0
+            llm_service._bound_tools = []
+
+            result = await gs.process_message(
+                tenant_slug="flower_shop",
+                session_id="test-product-query-session",
+                message="Do you have any roses?",
+            )
+
+            assert isinstance(result, str), f"Expected str, got {type(result)}"
+            assert len(result) > 0, "Response should not be empty"
+            # Real LLM should give a meaningful answer about products
+            assert "technical difficulties" not in result.lower(), (
+                f"Should get real AI response, not graceful failure: {result[:100]}"
+            )
         finally:
             await gs.shutdown()

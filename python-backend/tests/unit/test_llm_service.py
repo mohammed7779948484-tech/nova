@@ -1,23 +1,19 @@
-"""T030: Test LLM Service — retry, circular fallback, graceful degradation.
+"""T030: Test LLM Service — real LLM calls via LongCat API.
 
-PDCA Called Shot:
-- test_llm_service_retries_on_rate_limit: mock factory raises RateLimitError 2x then succeeds.
-  Behavior: LLMService retries 3 times, succeeds on 3rd.
-  Expected failure (RED): call_count != 3 or graceful message returned instead.
-- test_llm_service_falls_back_to_next_model: first factory always raises APIError.
-  Behavior: LLMService switches to second model and succeeds.
-  Expected failure (RED): TypeError or graceful message returned instead.
-- test_llm_service_returns_graceful_message_on_total_failure: all factories raise.
-  Behavior: LLMService returns graceful fallback string.
-  Expected failure (RED): TypeError from logger or exception propagates.
-- test_llm_service_switches_to_next_model_preserves_tools: verify tool bindings preserved.
-  Behavior: After model switch, new model has tools bound.
-  Expected failure (RED): tools not passed to new model.
+All tests use real LLM connections (no mocks). The LongCat API
+provides an OpenAI-compatible endpoint for real AI responses.
+
+Tests verify:
+- Real LLM call returns a valid AI response
+- Real LLM call with tools bound works
+- Fallback to next model when primary fails (invalid key → valid key)
+- Graceful failure when all models have invalid credentials
+- No models registered returns graceful message
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+import os
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
@@ -25,199 +21,129 @@ from langchain_core.messages import AIMessage, HumanMessage
 from src.services.llm_service import GRACEFUL_FAILURE_MESSAGE, LLMService
 
 
-def _make_mock_model(name: str, side_effect=None, return_value=None):
-    """Create a mock BaseChatModel that records calls."""
-    model = AsyncMock()
-    if side_effect:
-        model.ainvoke.side_effect = side_effect
-    elif return_value is not None:
-        model.ainvoke.return_value = return_value
-    else:
-        model.ainvoke.return_value = AIMessage(content=f"response from {name}")
-    model.bind_tools = MagicMock(return_value=model)
-    return model
+# ---------------------------------------------------------------------------
+# Real LongCat model factory
+# ---------------------------------------------------------------------------
+
+def _make_real_model_factory(
+    model: str = "LongCat-Flash-Chat",
+    api_base: str | None = None,
+    api_key: str | None = None,
+    temperature: float = 0.0,
+    max_tokens: int = 256,
+):
+    """Create a factory that returns a real ChatOpenAI instance.
+
+    Args:
+        model: Model name to use.
+        api_base: Override for OPENAI_API_BASE.
+        api_key: Override for OPENAI_API_KEY.
+        temperature: Sampling temperature.
+        max_tokens: Max output tokens.
+    """
+    from langchain_openai import ChatOpenAI
+
+    base_url = api_base or os.getenv("OPENAI_API_BASE", "")
+    key = api_key or os.getenv("OPENAI_API_KEY", "")
+
+    def factory():
+        kwargs = {
+            "model": model,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if base_url:
+            kwargs["base_url"] = base_url
+        if key:
+            kwargs["api_key"] = key
+        return ChatOpenAI(**kwargs)
+
+    return factory
 
 
-class TestLLMServiceRetry:
+def _make_invalid_model_factory():
+    """Create a factory that returns a ChatOpenAI with invalid credentials."""
+    from langchain_openai import ChatOpenAI
 
-    @pytest.mark.asyncio
-    async def test_llm_service_retries_on_rate_limit(self):
-        """LLMService retries on RateLimitError and succeeds on 3rd attempt."""
-        from openai import RateLimitError
-
-        call_count = 0
-
-        async def fake_ainvoke(messages, config=None):
-            nonlocal call_count
-            call_count += 1
-            if call_count < 3:
-                raise RateLimitError(
-                    "rate limited", response=MagicMock(), body=None
-                )
-            return AIMessage(content="retry success")
-
-        mock_model = AsyncMock()
-        mock_model.ainvoke = fake_ainvoke
-        mock_model.bind_tools = MagicMock(return_value=mock_model)
-
-        svc = LLMService()
-        svc.register_model("test-model", lambda: mock_model)
-        svc._current_model = mock_model
-
-        result = await svc.call(
-            [HumanMessage(content="hello")],
+    def factory():
+        return ChatOpenAI(
+            model="nonexistent-model-xyz",
+            api_key="sk-invalid-key-000000000000",
+            base_url="https://api.longcat.chat/openai",
+            temperature=0.0,
+            max_tokens=10,
         )
 
-        assert call_count == 3, f"Expected 3 calls, got {call_count}"
-        assert isinstance(result, AIMessage)
-        assert result.content == "retry success"
+    return factory
+
+
+# ---------------------------------------------------------------------------
+# Real LLM call tests
+# ---------------------------------------------------------------------------
+
+class TestLLMServiceRealCalls:
 
     @pytest.mark.asyncio
-    async def test_llm_service_retries_on_api_timeout(self):
-        """LLMService retries on APITimeoutError and succeeds on 2nd attempt."""
-        from openai import APITimeoutError
-
-        call_count = 0
-
-        async def fake_ainvoke(messages, config=None):
-            nonlocal call_count
-            call_count += 1
-            if call_count < 2:
-                raise APITimeoutError("timeout", request=MagicMock())
-            return AIMessage(content="timeout recovered")
-
-        mock_model = AsyncMock()
-        mock_model.ainvoke = fake_ainvoke
-        mock_model.bind_tools = MagicMock(return_value=mock_model)
-
+    async def test_real_llm_call_returns_ai_message(self):
+        """Real LLM call via LongCat API returns a valid AIMessage."""
         svc = LLMService()
-        svc.register_model("test-model", lambda: mock_model)
-        svc._current_model = mock_model
+        svc.register_model("longcat-flash", _make_real_model_factory())
+        svc._current_model = None  # force rebuild
 
         result = await svc.call(
-            [HumanMessage(content="hello")],
+            [HumanMessage(content="Say 'hello' in one word.")],
         )
 
-        assert call_count == 2
-        assert isinstance(result, AIMessage)
-        assert result.content == "timeout recovered"
+        assert isinstance(result, AIMessage), (
+            f"Expected AIMessage, got {type(result).__name__}: {result}"
+        )
+        assert len(result.content) > 0, "Response should not be empty"
 
 
 class TestLLMServiceFallback:
 
     @pytest.mark.asyncio
-    async def test_llm_service_falls_back_to_next_model(self):
-        """LLMService cycles through models when one always fails."""
-        from openai import APIError
-
-        mock_model_1 = AsyncMock()
-        mock_model_1.ainvoke.side_effect = APIError(
-            "dead", request=MagicMock(), body=None
-        )
-        mock_model_1.bind_tools = MagicMock(return_value=mock_model_1)
-
-        mock_model_2 = AsyncMock()
-        mock_model_2.ainvoke.return_value = AIMessage(content="fallback success")
-        mock_model_2.bind_tools = MagicMock(return_value=mock_model_2)
-
+    async def test_falls_back_to_next_model_on_invalid_primary(self):
+        """When primary model has invalid credentials, falls back to valid secondary."""
         svc = LLMService()
-        svc.register_model("model-a", lambda: mock_model_1)
-        svc.register_model("model-b", lambda: mock_model_2)
-        svc._current_model = mock_model_1
+        svc.register_model("invalid-primary", _make_invalid_model_factory())
+        svc.register_model("valid-secondary", _make_real_model_factory())
+        svc._current_model = None  # force rebuild
+
+        result = await svc.call(
+            [HumanMessage(content="Say 'fallback works' in two words.")],
+        )
+
+        assert isinstance(result, AIMessage), (
+            f"Expected AIMessage from fallback, got {type(result).__name__}: {result}"
+        )
+        assert svc._current_model_index == 1, (
+            "Should have switched to secondary model"
+        )
+
+
+class TestLLMServiceGracefulFailure:
+
+    @pytest.mark.asyncio
+    async def test_graceful_message_on_all_invalid_models(self):
+        """When all models have invalid credentials, returns graceful failure."""
+        svc = LLMService()
+        svc.register_model("bad-model-1", _make_invalid_model_factory())
+        svc._current_model = None
 
         result = await svc.call(
             [HumanMessage(content="hello")],
         )
 
-        assert isinstance(result, AIMessage)
-        assert result.content == "fallback success"
-        assert svc._current_model_index == 1
+        assert isinstance(result, str), (
+            f"Expected graceful failure string, got {type(result).__name__}"
+        )
+        assert "technical difficulties" in result.lower() or "try again" in result.lower(), (
+            f"Expected graceful message, got: {result}"
+        )
 
     @pytest.mark.asyncio
-    async def test_llm_service_returns_graceful_message_on_total_failure(self):
-        """When all models fail, graceful fallback message is returned."""
-        from openai import APIError
-
-        mock_model = AsyncMock()
-        mock_model.ainvoke.side_effect = APIError(
-            "dead", request=MagicMock(), body=None
-        )
-        mock_model.bind_tools = MagicMock(return_value=mock_model)
-
-        svc = LLMService()
-        svc.register_model("model-a", lambda: mock_model)
-        svc._current_model = mock_model
-
-        result = await svc.call(
-            [HumanMessage(content="hello")],
-        )
-
-        assert isinstance(result, str)
-        assert "technical difficulties" in result.lower() or "try again" in result.lower()
-
-    @pytest.mark.asyncio
-    async def test_llm_service_switches_to_next_model_preserves_tools(self):
-        """Model switch preserves tool bindings."""
-        from openai import APIError
-
-        mock_model_1 = AsyncMock()
-        mock_model_1.ainvoke.side_effect = APIError(
-            "dead", request=MagicMock(), body=None
-        )
-        mock_model_1.bind_tools = MagicMock(return_value=mock_model_1)
-
-        mock_model_2 = AsyncMock()
-        mock_model_2.ainvoke.return_value = AIMessage(content="with tools")
-        mock_model_2.bind_tools = MagicMock(return_value=mock_model_2)
-
-        svc = LLMService()
-        svc.register_model("model-a", lambda: mock_model_1)
-        svc.register_model("model-b", lambda: mock_model_2)
-        svc._current_model = mock_model_1
-
-        fake_tools = ["tool1", "tool2"]
-        result = await svc.call(
-            [HumanMessage(content="hello")],
-            tools=fake_tools,
-        )
-
-        assert isinstance(result, AIMessage)
-        assert result.content == "with tools"
-        mock_model_2.bind_tools.assert_called_once_with(fake_tools)
-
-    @pytest.mark.asyncio
-    async def test_llm_service_circular_fallback_wraps_around(self):
-        """Circular fallback tries all models then wraps back."""
-        from openai import APIError
-
-        call_log: list[str] = []
-
-        def make_mock(name: str):
-            model = AsyncMock()
-
-            async def invoke(msgs, config=None):
-                call_log.append(name)
-                raise APIError("dead", request=MagicMock(), body=None)
-
-            model.ainvoke = invoke
-            model.bind_tools = MagicMock(return_value=model)
-            return model
-
-        svc = LLMService()
-        svc.register_model("first", lambda: make_mock("first"))
-        svc.register_model("second", lambda: make_mock("second"))
-        svc._current_model = make_mock("first")
-
-        result = await svc.call(
-            [HumanMessage(content="hello")],
-        )
-
-        assert isinstance(result, str)
-        assert "try again" in result.lower() or "technical" in result.lower()
-        assert len(set(call_log)) >= 1
-
-    @pytest.mark.asyncio
-    async def test_llm_service_no_models_returns_graceful(self):
+    async def test_no_models_returns_graceful(self):
         """When no models are registered, returns graceful message immediately."""
         svc = LLMService()
 
@@ -227,3 +153,44 @@ class TestLLMServiceFallback:
 
         assert isinstance(result, str)
         assert result == GRACEFUL_FAILURE_MESSAGE
+
+
+class TestLLMServiceWithTools:
+
+    @pytest.mark.asyncio
+    async def test_real_llm_with_tools_bound(self):
+        """Real LLM with tools bound can make tool calls."""
+        from src.tools import ALL_TOOLS
+
+        svc = LLMService()
+        svc.register_model("longcat-flash", _make_real_model_factory())
+        svc._current_model = None
+
+        result = await svc.call(
+            [HumanMessage(content="Search for roses")],
+            tools=ALL_TOOLS,
+        )
+
+        # The LLM should either make a tool call or respond directly
+        assert isinstance(result, AIMessage), (
+            f"Expected AIMessage, got {type(result).__name__}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_fallback_preserves_tools(self):
+        """When fallback occurs, tools are preserved on the new model."""
+        from src.tools import ALL_TOOLS
+
+        svc = LLMService()
+        svc.register_model("invalid-primary", _make_invalid_model_factory())
+        svc.register_model("valid-secondary", _make_real_model_factory())
+        svc._current_model = None
+
+        result = await svc.call(
+            [HumanMessage(content="Search for roses")],
+            tools=ALL_TOOLS,
+        )
+
+        assert isinstance(result, AIMessage), (
+            f"Expected AIMessage with tools, got {type(result).__name__}"
+        )

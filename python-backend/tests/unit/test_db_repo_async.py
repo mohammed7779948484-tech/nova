@@ -1,28 +1,22 @@
-"""T008: Test async DB repository.
+"""T008: Test async DB repository — real Supabase connection.
 
-PDCA Called Shot:
-- test_repository_uses_async_client: verify DBProductRepository.client is an
-  instance of httpx.AsyncClient.
-  Expected RED: AssertionError <httpx.Client> is not an instance of <httpx.AsyncClient>
-- test_search_is_async: verify DBProductRepository.search is a coroutine function.
-  Expected RED: AssertionError False is not true
+Tests verify:
+- DBProductRepository uses httpx.AsyncClient
+- DBProductRepository.search is async
+- Real search against Supabase returns data
 """
 
 import asyncio
 import inspect
 
-import pytest
 import httpx
+import pytest
 
 
 class TestDBRepoAsync:
 
     def test_repository_uses_async_client(self):
         """DBProductRepository must use httpx.AsyncClient, not httpx.Client."""
-        import os
-        os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
-        os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-key")
-
         from src.repositories.db_repo import DBProductRepository
 
         repo = DBProductRepository()
@@ -46,3 +40,39 @@ class TestDBRepoAsync:
         assert inspect.iscoroutinefunction(DBProductRepository.aclose), (
             "DBProductRepository.aclose must be an async coroutine function"
         )
+
+
+class TestDBRepoRealSearch:
+
+    @pytest.mark.asyncio
+    async def test_search_returns_real_products(self):
+        """Search against real Supabase returns flower_shop products."""
+        from src.repositories.db_repo import DBProductRepository
+
+        repo = DBProductRepository()
+        try:
+            results = await repo.search("flower_shop", "rose")
+
+            assert isinstance(results, list), (
+                f"Expected list, got {type(results).__name__}"
+            )
+            # If there are products in the DB, verify structure
+            if results:
+                first = results[0]
+                assert hasattr(first, "id") or hasattr(first, "name"), (
+                    f"Product should have 'id' or 'name' attribute"
+                )
+        finally:
+            await repo.aclose()
+
+    @pytest.mark.asyncio
+    async def test_search_empty_for_unknown_tenant(self):
+        """Search for unknown tenant returns empty list."""
+        from src.repositories.db_repo import DBProductRepository
+
+        repo = DBProductRepository()
+        try:
+            results = await repo.search("nonexistent_tenant_xyz", "anything")
+            assert isinstance(results, list)
+        finally:
+            await repo.aclose()
