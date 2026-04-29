@@ -386,34 +386,34 @@ Every test task MUST include before execution:
 
 ### Tests for User Story 6 (MANDATORY — PDCA TDD Enforced) 🚨
 
-- [ ] T052 [P] [US6] Write test for rate limiter in `python-backend/tests/unit/test_rate_limiter.py`.
+- [X] T052 [P] [US6] Write test for rate limiter in `python-backend/tests/unit/test_rate_limiter.py`.
   - **Called Shot**: `test_rate_limiter_allows_under_threshold` — make 5 requests from same IP+tenant in 1 minute, verify all return 200. Expected RED: `ImportError: cannot import name 'RateLimiterMiddleware' from 'src.middleware.rate_limiter'`.
   - **Called Shot**: `test_rate_limiter_blocks_over_threshold` — make 61 requests from same IP+tenant, verify 429 with `Retry-After` header. Expected RED: same ImportError.
   - **Called Shot**: `test_rate_limiter_is_per_tenant` — two different tenants from same IP, verify each has independent counter. Expected RED: same ImportError.
 
-- [ ] T053 [P] [US6] Write test for input sanitizer in `python-backend/tests/unit/test_sanitizer.py`.
+- [X] T053 [P] [US6] Write test for input sanitizer in `python-backend/tests/unit/test_sanitizer.py`.
   - **Called Shot**: `test_sanitize_strips_html` — input `"<script>alert('xss')</script>Hello"` returns `"Hello"`. Expected RED: `ImportError: cannot import name 'sanitize_input' from 'src.core.sanitizer'`.
   - **Called Shot**: `test_sanitize_truncates_long_input` — input exceeding 4000 chars is truncated to 4000. Expected RED: same ImportError.
   - **Called Shot**: `test_sanitize_preserves_unicode` — Arabic, Russian, emoji text preserved. Expected RED: same ImportError.
 
 ### Implementation for User Story 6
 
-- [ ] T054 [US6] Create `python-backend/src/middleware/rate_limiter.py` (~80 lines):
+- [X] T054 [US6] Create `python-backend/src/middleware/rate_limiter.py` (~80 lines):
   1. In-memory sliding window rate limiter using `dict[tuple[str, str], list[float]]` keyed by `(client_ip, tenant_id)`.
   2. `class RateLimiterMiddleware(BaseHTTPMiddleware)` — reads `X-Forwarded-For` for real IP.
   3. Default: 60 req/min per tenant per IP. Configurable via settings.
   4. On limit exceeded: return 429 with `Retry-After` header and `{"detail": "Rate limit exceeded", "retry_after": seconds}`.
 
-- [ ] T055 [US6] Create `python-backend/src/core/sanitizer.py` (~50 lines):
+- [X] T055 [US6] Create `python-backend/src/core/sanitizer.py` (~50 lines):
   1. `def sanitize_input(text: str, max_length: int = 4000) -> str` — strip HTML tags, truncate, normalize whitespace.
   2. `def detect_prompt_injection(text: str) -> bool` — basic pattern matching for common injection patterns (`"ignore previous instructions"`, `"system prompt:"`, etc.). Returns True if suspicious.
   3. Apply sanitization in `GraphService.process_message()` before passing to graph.
 
-- [ ] T056 [US6] Register rate limiter middleware in `python-backend/src/app.py`:
+- [X] T056 [US6] Register rate limiter middleware in `python-backend/src/app.py`:
   1. `from src.middleware.rate_limiter import RateLimiterMiddleware`
   2. `app.add_middleware(RateLimiterMiddleware)` — must be added after CORS middleware.
 
-- [ ] T057 [US6] Run all US6 tests. All GREEN.
+- [X] T057 [US6] Run all US6 tests. All GREEN.
 
 **Checkpoint**: Rate limiting active. Input sanitized. Abuse prevention in place.
 

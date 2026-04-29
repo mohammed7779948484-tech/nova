@@ -82,6 +82,12 @@ class GraphService:
         self, tenant_slug: str, session_id: str, message: str, channel: str = "web",
     ) -> str:
         """Process a customer message through the LangGraph agent."""
+        # Sanitize input before processing
+        from src.core.sanitizer import sanitize_input, detect_prompt_injection
+        message = sanitize_input(message)
+        if detect_prompt_injection(message):
+            logger.warning("prompt_injection_detected session_id=%s tenant=%s", session_id, tenant_slug)
+
         await self._ensure_graph()
         if self._graph is None:
             return "Agent is currently unavailable. Please try again later."

@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.channels.admin.router import router as admin_router
 from src.channels.web.router import router as web_router
 from src.channels.whatsapp.router import router as whatsapp_router
+from src.middleware.rate_limiter import RateLimiterMiddleware
 from src.services.graph_service import graph_service
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Nova Backend", lifespan=lifespan)
 
+# Middleware order: LIFO — last added runs first on the way in.
+# Rate limiter should run before CORS on inbound requests.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -79,6 +82,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimiterMiddleware)
 
 
 @app.get("/health")

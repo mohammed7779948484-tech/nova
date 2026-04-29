@@ -58,5 +58,89 @@
     "tags": ["مشروب", "عصير", "بارد", "drink", "juice"],
     "is_promoted": false,
     "promotion_text": ""
+  },
+  {
+    "id": "dish-006",
+    "name": "كبسة لحم",
+    "description": "كبسة لحم تقليدية مع أرز بسمتي معطر بالتوابل والزعفران مع المكسرات والزبيب",
+    "price": 45,
+    "currency": "SAR",
+    "category": "main",
+    "image_url": "",
+    "tags": ["كبسة", "لحم", "أرز", "تقليدي", "سعودي", "kabsa"],
+    "is_promoted": true,
+    "promotion_text": "طبق اليوم: كبسة اللحم مع سلطة مجانية!"
+  },
+  {
+    "id": "dish-007",
+    "name": "مندي دجاج",
+    "description": "مندي دجاج طازج مدخن على الحطب مع أرز بسمتي معطر ومطهو ببطء",
+    "price": 40,
+    "currency": "SAR",
+    "category": "main",
+    "image_url": "",
+    "tags": ["مندي", "دجاج", "مدخن", "تقليدي", "mandi"],
+    "is_promoted": false,
+    "promotion_text": ""
+  },
+  {
+    "id": "dish-008",
+    "name": "فتة حمص",
+    "description": "فتة حمص بالزبدة والصنوبر المحمص مع خبز مقرمش",
+    "price": 15,
+    "currency": "SAR",
+    "category": "appetizers",
+    "image_url": "",
+    "tags": ["فتة", "حمص", "مقبلات", "صنوبر", "hummus"],
+    "is_promoted": false,
+    "promotion_text": ""
+  },
+  {
+    "id": "dish-009",
+    "name": "مشاوي مشكلة",
+    "description": "تشكيلة مشاوي فاخرة تحتوي على كباب لحم وشقف ودجاج مشوي مع الأرز والسلطات",
+    "price": 85,
+    "currency": "SAR",
+    "category": "main",
+    "image_url": "",
+    "tags": ["مشاوي", "كباب", "شقف", "مشكلة", "grill", "mixed"],
+    "is_promoted": true,
+    "promotion_text": "عرض العائلة: مشاوي مشكلة تكفي 4 أشخاص بخصم 15%"
+  },
+  {
+    "id": "dish-010",
+    "name": "كنافة نابلسية",
+    "description": "كنافة نابلسية تقليدية بالجبن مع شراب السكر ومكسرات محمصة",
+    "price": 20,
+    "currency": "SAR",
+    "category": "desserts",
+    "image_url": "",
+    "tags": ["كنافة", "حلى", "جبن", "نابلسية", "dessert", "kunafa"],
+    "is_promoted": true,
+    "promotion_text": "جديد! كنافة نابلسية طازجة يومياً"
+  },
+  {
+    "id": "dish-011",
+    "name": "شاي كرك",
+    "description": "شاي كرك هندي بالحليب والهيل والزعفران - مميز",
+    "price": 10,
+    "currency": "SAR",
+    "category": "drinks",
+    "image_url": "",
+    "tags": ["شاي", "كرك", "هندي", "حليب", "tea", "karak"],
+    "is_promoted": false,
+    "promotion_text": ""
+  },
+  {
+    "id": "dish-012",
+    "name": "حمص بالطحينة",
+    "description": "حمص طازج مهروس بالطحينة والليمون مع زيت الزيتون والبابريكا",
+    "price": 12,
+    "currency": "SAR",
+    "category": "appetizers",
+    "image_url": "",
+    "tags": ["حمص", "طحينة", "مقبلات", "hummus", "tahini"],
+    "is_promoted": false,
+    "promotion_text": ""
   }
 ]
