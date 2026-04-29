@@ -45,15 +45,27 @@ async def lifespan(app: FastAPI):
 
     logger.info("Nova Backend shutting down — cleaning up resources")
 
-    await graph_service.shutdown()
+    # Wrap each shutdown step in try/except to be resilient to
+    # event-loop-closed errors during test teardown (a known issue
+    # with pytest-asyncio + FastAPI ASGI transport).
+    try:
+        await graph_service.shutdown()
+    except RuntimeError:
+        logger.warning("graph_service.shutdown() skipped — event loop closed")
 
-    from src.config.tenant_config import _db_config
-    if _db_config is not None:
-        await _db_config.aclose()
+    try:
+        from src.config.tenant_config import _db_config
+        if _db_config is not None:
+            await _db_config.aclose()
+    except RuntimeError:
+        logger.warning("_db_config.aclose() skipped — event loop closed")
 
-    from src.repositories.db_repo import _db_repo
-    if _db_repo is not None:
-        await _db_repo.aclose()
+    try:
+        from src.repositories.db_repo import _db_repo
+        if _db_repo is not None:
+            await _db_repo.aclose()
+    except RuntimeError:
+        logger.warning("_db_repo.aclose() skipped — event loop closed")
 
     logger.info("All resources cleaned up")
 

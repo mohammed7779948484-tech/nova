@@ -17,8 +17,8 @@ from src.state.agent_state import SalesAgentState
 class TestAgentStateNoDeadFields:
 
     def test_state_has_no_dead_fields(self):
-        """SalesAgentState should have exactly 3 keys: messages, channel, channel_user_id."""
-        expected_keys = {"messages", "channel", "channel_user_id"}
+        """SalesAgentState should have exactly 4 keys: messages, channel, channel_user_id, escalation_reason."""
+        expected_keys = {"messages", "channel", "channel_user_id", "escalation_reason"}
         actual_keys = set(SalesAgentState.__annotations__.keys())
         assert actual_keys == expected_keys, (
             f"Expected keys {expected_keys}, got {actual_keys}. "
@@ -26,7 +26,7 @@ class TestAgentStateNoDeadFields:
         )
 
     def test_state_can_be_instantiated_minimal(self):
-        """SalesAgentState should be creatable with just the 3 required fields."""
+        """SalesAgentState should be creatable with just the 3 required fields (escalation_reason is NotRequired)."""
         state: SalesAgentState = {
             "messages": [],
             "channel": "web",

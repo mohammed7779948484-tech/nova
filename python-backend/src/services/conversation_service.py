@@ -140,7 +140,11 @@ class ConversationService:
         conversation_id: str | UUID,
         status: str,
     ) -> dict:
-        """Update the status of a conversation."""
+        """Update the status of a conversation.
+
+        Returns:
+            Updated conversation dict, or {"status": status} if no rows matched.
+        """
         client = await self._get_client()
         response = await client.patch(
             "/conversations",
@@ -149,7 +153,22 @@ class ConversationService:
         )
         response.raise_for_status()
         result = response.json()
-        return result[0] if isinstance(result, list) else result
+        if isinstance(result, list) and result:
+            return result[0]
+        if isinstance(result, dict):
+            return result
+        # No rows matched — return the intended status
+        return {"status": status}
+
+    async def get_last_message(self, conversation_id: str | UUID) -> dict | None:
+        """Get the most recent message for a conversation."""
+        params = {
+            "conversation_id": f"eq.{conversation_id}",
+            "order": "created_at.desc",
+            "limit": "1",
+        }
+        rows = await self._query("messages", params)
+        return rows[0] if rows else None
 
 
 conversation_service = ConversationService()

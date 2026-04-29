@@ -282,40 +282,40 @@ Every test task MUST include before execution:
 
 ### Tests for User Story 4 (MANDATORY — PDCA TDD Enforced) 🚨
 
-- [ ] T036 [P] [US4] Write test for escalation node in `python-backend/tests/unit/test_escalation_node.py`.
+- [X] T036 [P] [US4] Write test for escalation node in `python-backend/tests/unit/test_escalation_node.py`.
   - **Called Shot**: `test_escalation_node_interrupts_graph` — invoke escalation node, verify it calls `interrupt()` with escalation reason. Expected RED: `ImportError: cannot import name 'escalation_node' from 'src.nodes.escalation'` (file doesn't exist).
   - 📎 LangGraph: `from langgraph.types import interrupt` — calling `interrupt(value)` pauses graph execution.
 
-- [ ] T037 [P] [US4] Write test for supervisor endpoints in `python-backend/tests/unit/test_supervisor_endpoints.py`.
+- [X] T037 [P] [US4] Write test for supervisor endpoints in `python-backend/tests/unit/test_supervisor_endpoints.py`.
   - **Called Shot**: `test_list_escalations` — `GET /api/escalations?agent_id=<uuid>` returns 200 with `escalations` list filtered to `status=escalated`. Expected RED: `404 Not Found`.
   - **Called Shot**: `test_resume_escalation` — `POST /api/escalations/<id>/resume` with `{"supervisor_response": "approve"}` returns 200 with `status=active`. Expected RED: `404 Not Found`.
   - **Called Shot**: `test_handoff_conversation` — `POST /api/escalations/<id>/handoff` returns 200 with `status=handed_off`. Expected RED: `404 Not Found`.
   - **Called Shot**: `test_resolve_conversation` — `POST /api/conversations/<id>/resolve` returns 200 with `status=resolved`. Expected RED: `404 Not Found`.
 
-- [ ] T038 [P] [US4] Write test for lifecycle state transitions in `python-backend/tests/unit/test_lifecycle.py`.
+- [X] T038 [P] [US4] Write test for lifecycle state transitions in `python-backend/tests/unit/test_lifecycle.py`.
   - **Called Shot**: `test_valid_transitions` — verify all allowed transitions: active→escalated, escalated→active, escalated→handed_off, handed_off→active, active→resolved, escalated→resolved, handed_off→resolved. Expected RED: `ImportError: cannot import name 'validate_transition'`.
   - **Called Shot**: `test_invalid_transitions` — verify disallowed: resolved→active, active→handed_off (must go through escalated). Expected RED: same ImportError.
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Create lifecycle state machine in `python-backend/src/models/lifecycle.py` (~50 lines):
+- [X] T039 [US4] Create lifecycle state machine in `python-backend/src/models/lifecycle.py` (~50 lines):
   1. Import `ConversationStatus` from `src/models/enums.py`.
   2. Define `VALID_TRANSITIONS: dict[ConversationStatus, set[ConversationStatus]]` mapping each status to its allowed next states per spec: `active→{escalated, resolved}`, `escalated→{active, handed_off, resolved}`, `handed_off→{active, resolved}`, `resolved→set()`.
   3. `def validate_transition(current, target) -> bool` — returns `target in VALID_TRANSITIONS[current]`.
   4. `def transition_or_raise(current, target)` — raises `ValueError` if invalid.
 
-- [ ] T040 [US4] Create escalation node in `python-backend/src/nodes/escalation.py` (~40 lines):
+- [X] T040 [US4] Create escalation node in `python-backend/src/nodes/escalation.py` (~40 lines):
   1. `async def escalation_node(state, config) -> Command` — calls `interrupt({"reason": state.get("escalation_reason", "customer_request"), "message": "Waiting for supervisor input"})`.
   2. Import: `from langgraph.types import interrupt`.
   📎 LangGraph: `interrupt()` pauses graph execution, stores state in checkpoint. Resume via `Command(resume=value)`.
 
-- [ ] T041 [US4] Update graph to include escalation node in `python-backend/src/graphs/sales_graph.py`:
+- [X] T041 [US4] Update graph to include escalation node in `python-backend/src/graphs/sales_graph.py`:
   1. Import `escalation_node` from `src.nodes.escalation`.
   2. Add `builder.add_node("escalate", escalation_node)` after the tools node.
   3. The assistant node will route to "escalate" when it detects escalation triggers (low confidence, customer request).
   📎 LangGraph: `add_node("escalate", escalation_node)` — node that calls `interrupt()`.
 
-- [ ] T042 [US4] Add supervisor endpoints to `python-backend/src/channels/admin/router.py` (extend from T027, keep under 300 lines):
+- [X] T042 [US4] Add supervisor endpoints to `python-backend/src/channels/admin/router.py` (extend from T027, keep under 300 lines):
   1. `GET /api/escalations` — calls `conversation_service.list_conversations(status="escalated")`.
   2. `POST /api/escalations/{conversation_id}/resume` — calls `graph_service.resume_conversation(conversation_id, supervisor_response)`. This invokes `graph.ainvoke(Command(resume=response), config)`.
   3. `POST /api/escalations/{conversation_id}/handoff` — updates status to `handed_off`.
@@ -323,12 +323,12 @@ Every test task MUST include before execution:
   5. `POST /api/conversations/{conversation_id}/resolve` — updates status to `resolved`.
   📎 LangGraph: `graph.ainvoke(Command(resume=supervisor_response), config={"configurable": {"thread_id": session_id}})` — Ref: `reference-template/app/core/langgraph/graph.py:285-288`
 
-- [ ] T043 [US4] Add `resume_conversation()` method to `python-backend/src/services/graph_service.py`:
+- [X] T043 [US4] Add `resume_conversation()` method to `python-backend/src/services/graph_service.py`:
   1. `async def resume_conversation(session_id, supervisor_response)` — get graph state via `graph.aget_state(config)`, check `state.next` exists (graph is paused), then `graph.ainvoke(Command(resume=supervisor_response), config)`.
   2. Handle `GraphInterrupt` exception.
   📎 LangGraph: `aget_state()` + `Command(resume=...)` — Ref: `reference-template/app/core/langgraph/graph.py:276-314`
 
-- [ ] T044 [US4] Run all US4 tests: `pytest python-backend/tests/unit/test_escalation_node.py python-backend/tests/unit/test_supervisor_endpoints.py python-backend/tests/unit/test_lifecycle.py -v`. All GREEN.
+- [X] T044 [US4] Run all US4 tests: `pytest python-backend/tests/unit/test_escalation_node.py python-backend/tests/unit/test_supervisor_endpoints.py python-backend/tests/unit/test_lifecycle.py -v`. All GREEN.
 
 **Checkpoint**: HITL workflow complete. Escalation pauses AI, supervisor can resume/handoff/resolve. Lifecycle states enforced.
 ## Phase 7: User Story 5 — WhatsApp Channel (Priority: P1)

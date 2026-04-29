@@ -1,0 +1,20 @@
+
+> aiagents@0.1.0 dev C:\Users\M\Desktop\AIagents
+> next dev
+
+⚠ Port 3000 is in use by process 105824, using available port 3001 instead.
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.8.145:3001
+- Environments: .env
+✓ Ready in 317ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          105824
+- Dir:          C:\Users\M\Desktop\AIagents
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 105824 /F to stop it.
+[?25h
+ ELIFECYCLE  Command failed with exit code 1.

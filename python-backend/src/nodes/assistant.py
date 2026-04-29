@@ -122,11 +122,62 @@ def _extract_topics(messages: list[BaseMessage], max_topics: int = 5) -> list[st
     return topics[:max_topics]
 
 
+def _should_escalate(ai_message: AIMessage) -> str | None:
+    """Check if an AI message indicates escalation is needed.
+
+    Detects escalation signals in the AI response content:
+    - Explicit escalation request phrases
+    - Low confidence indicators
+
+    Returns:
+        Escalation reason string if escalation is needed, None otherwise.
+    """
+    content = ai_message.content.lower() if isinstance(ai_message.content, str) else ""
+
+    # Customer-requested escalation patterns
+    escalation_phrases = [
+        "speak to a supervisor",
+        "talk to a human",
+        "speak to a manager",
+        "connect me to a human",
+        "i want to escalate",
+        "transfer to supervisor",
+        "escalate this",
+        "[escalate]",
+    ]
+
+    for phrase in escalation_phrases:
+        if phrase in content:
+            return "customer_request"
+
+    # Low confidence patterns
+    low_confidence_phrases = [
+        "i'm not sure how to",
+        "i cannot assist with",
+        "beyond my capabilities",
+        "i'm unable to help",
+        "outside my expertise",
+    ]
+
+    for phrase in low_confidence_phrases:
+        if phrase in content:
+            return "low_confidence"
+
+    return None
+
+
 async def assistant_node(
     state: SalesAgentState,
     config: RunnableConfig,
-) -> Command[Literal["tools", "__end__"]]:
-    """Invoke the LLM and route based on whether it made tool calls."""
+) -> Command[Literal["tools", "escalate", "__end__"]]:
+    """Invoke the LLM and route based on response.
+
+    Routing logic:
+    - If LLM returns graceful failure string → END
+    - If LLM made tool calls → "tools"
+    - If LLM response contains escalation triggers → "escalate"
+    - Otherwise → END
+    """
     from src.services.llm_service import llm_service
 
     tenant_id = config["configurable"]["tenant_id"]
@@ -161,6 +212,18 @@ async def assistant_node(
         return Command(
             update={"messages": [result]},
             goto="tools",
+        )
+
+    # Check for escalation triggers in the AI response
+    escalation_reason = _should_escalate(result)
+    if escalation_reason:
+        logger.info("assistant_escalating reason=%s", escalation_reason)
+        return Command(
+            update={
+                "messages": [result],
+                "escalation_reason": escalation_reason,
+            },
+            goto="escalate",
         )
 
     return Command(

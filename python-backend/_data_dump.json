@@ -1,0 +1,25 @@
+{
+  "conversations": [
+    {
+      "id": "a0000000-0000-0000-0000-000000000099",
+      "agent_id": "b0000000-0000-0000-0000-000000000002",
+      "session_id": "tech_store:946e11a7",
+      "channel": "web",
+      "status": "active"
+    }
+  ],
+  "messages": [
+    {
+      "id": "f4410c75-40ef-4dc8-bcbf-15e8bae29f01",
+      "conversation_id": "a0000000-0000-0000-0000-000000000099",
+      "role": "user",
+      "content": "Hello! What phones do you recommend?"
+    },
+    {
+      "id": "273cd8d9-b84e-44e4-a620-dc1408fcaa70",
+      "conversation_id": "a0000000-0000-0000-0000-000000000099",
+      "role": "assistant",
+      "content": "Hello! I'd be happy to help you find the perfect phone. To give you the best recommendations, I need to understand your needs better:\n\n1. **What's your budget range?** (Under $300, $300-600, $600-1000, or premium)\n2. **What's most important to you?** (Camera quality, battery life, performance, display, storage, etc.)\n3. **What will you mainly use it for?** (Gaming, photography, work, social media, basic calls/texts)\n4. **Any brand preferences?** (Apple, Samsung, Google, OnePlus, etc.)\n5. **Do you need 5G connectivity?**\n\nOnce I know your priorities, I can search our catalog and show you the best options that match your requirements!"
+    }
+  ]
+}

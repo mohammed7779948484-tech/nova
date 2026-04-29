@@ -1,0 +1,23 @@
+[
+  {
+    "id": "b0000000-0000-0000-0000-000000000001",
+    "tenant_slug": "flower_shop",
+    "business_name": "Розы & Букеты",
+    "name": "Айгуль",
+    "is_active": true
+  },
+  {
+    "id": "b0000000-0000-0000-0000-000000000002",
+    "tenant_slug": "tech_store",
+    "business_name": "TechHub Electronics",
+    "name": "Alex",
+    "is_active": true
+  },
+  {
+    "id": "b0000000-0000-0000-0000-000000000003",
+    "tenant_slug": "restaurant_test",
+    "business_name": "Test Restaurant",
+    "name": "خدمة عملاء المطعم",
+    "is_active": true
+  }
+]

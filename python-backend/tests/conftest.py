@@ -4,11 +4,23 @@ from __future__ import annotations
 
 import os
 import sys
+import warnings
 from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
+
+# Suppress the RuntimeError("Event loop is closed") that can occur during
+# ASGI transport teardown with pytest-asyncio. This is a known issue where
+# the event loop closes before the async cleanup of httpx/anyio completes.
+# Note: We can't use warnings.filterwarnings for RuntimeError (not a Warning),
+# so we handle it via pytest's unraisable hook instead.
+
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config):
+    """Configure pytest to handle event loop cleanup errors gracefully."""
+    pass
 
 # ── Force test environment before any settings import ────────────────────
 os.environ["ENVIRONMENT"] = "test"

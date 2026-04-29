@@ -1,8 +1,18 @@
 """Sales agent graph assembly.
 
-Wires together the assistant and tool_executor nodes into a
-StateGraph. Compilation with a checkpointer is done separately
+Wires together the assistant, tool_executor, and escalation nodes
+into a StateGraph. Compilation with a checkpointer is done separately
 by GraphService using compile_with_postgres_async().
+
+Graph structure:
+    START → assistant ──→ (tool_calls?) → tools → assistant
+                    │
+                    └→ (escalate?) → escalate ──→ assistant (after resume)
+                    │
+                    └→ END
+
+The assistant node uses Command for routing: if tool calls → "tools",
+if escalation needed → "escalate", otherwise → END.
 """
 
 from __future__ import annotations
@@ -12,6 +22,7 @@ import logging
 from langgraph.graph import StateGraph, START
 
 from src.nodes.assistant import assistant_node
+from src.nodes.escalation import escalation_node
 from src.nodes.tool_executor import tool_executor_node
 from src.state.agent_state import SalesAgentState
 
@@ -22,7 +33,9 @@ def build_sales_graph() -> StateGraph:
     """Build the sales agent graph (uncompiled).
 
     Graph structure:
-        START → assistant → (tool_calls?) → tools → assistant → ... → END
+        START → assistant → (tool_calls?) → tools → assistant → ...
+                            → (escalate?) → escalate → assistant (after resume)
+                            → END
 
     Routing is handled inside nodes via Command — no conditional
     edge functions needed.
@@ -31,6 +44,7 @@ def build_sales_graph() -> StateGraph:
 
     builder.add_node("assistant", assistant_node)
     builder.add_node("tools", tool_executor_node)
+    builder.add_node("escalate", escalation_node)
 
     builder.add_edge(START, "assistant")
 
