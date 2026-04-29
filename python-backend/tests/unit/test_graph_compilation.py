@@ -6,11 +6,35 @@ Tests compile the graph with:
 """
 
 import inspect
+import socket
 import sys
 
 import pytest
 
 from src.graphs.sales_graph import build_sales_graph, compile_with_postgres_async
+
+
+def _postgres_reachable() -> bool:
+    """Check if the PostgreSQL host is reachable."""
+    try:
+        from src.config.settings import get_settings
+        settings = get_settings()
+        url = settings.database_url
+        if not url or not url.startswith("postgresql"):
+            return False
+        host_part = url.split("@")[-1].split("/")[0]
+        host = host_part.split(":")[0]
+        port = int(host_part.split(":")[1]) if ":" in host_part else 5432
+        socket.create_connection((host, port), timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+requires_postgres = pytest.mark.skipif(
+    not _postgres_reachable(),
+    reason="PostgreSQL not reachable — skipping integration test",
+)
 
 
 class TestGraphCompilation:
@@ -35,6 +59,7 @@ class TestGraphCompilation:
             "compile_with_postgres_async must be an async function"
         )
 
+    @requires_postgres
     @pytest.mark.asyncio
     async def test_graph_compiles_with_real_postgres_pool(self):
         """Compile graph with real AsyncConnectionPool from DATABASE_URL."""

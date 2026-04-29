@@ -8,11 +8,38 @@ Tests verify:
 """
 
 import inspect
+import os
+import socket
 import sys
 
 import pytest
 
 from src.services.graph_service import GraphService
+
+
+def _postgres_reachable() -> bool:
+    """Check if the PostgreSQL host is reachable."""
+    try:
+        from src.config.settings import get_settings
+        settings = get_settings()
+        url = settings.database_url
+        if not url or not url.startswith("postgresql"):
+            return False
+        # Extract host from URL
+        # e.g. postgresql://user:pass@host:port/db
+        host_part = url.split("@")[-1].split("/")[0]
+        host = host_part.split(":")[0]
+        port = int(host_part.split(":")[1]) if ":" in host_part else 5432
+        socket.create_connection((host, port), timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+requires_postgres = pytest.mark.skipif(
+    not _postgres_reachable(),
+    reason="PostgreSQL not reachable — skipping integration test",
+)
 
 
 class TestGraphServiceUnit:
@@ -46,18 +73,14 @@ class TestGraphServiceUnit:
 
 
 class TestGraphServiceIntegration:
+    """Integration tests against the real PostgreSQL database."""
 
+    @requires_postgres
     @pytest.mark.asyncio
     async def test_graph_service_compiles_with_real_postgres(self):
         """GraphService should compile graph with real PostgresSaver."""
         if sys.platform == "win32":
             pytest.skip("psycopg_pool requires SelectorEventLoop — skipped on Windows")
-
-        from src.config.settings import get_settings
-
-        settings = get_settings()
-        if not settings.database_url:
-            pytest.skip("DATABASE_URL not set — skipping integration test")
 
         gs = GraphService()
         try:
@@ -68,17 +91,12 @@ class TestGraphServiceIntegration:
         finally:
             await gs.shutdown()
 
+    @requires_postgres
     @pytest.mark.asyncio
     async def test_graph_service_reuses_compiled_graph(self):
         """Multiple _ensure_graph() calls should not recompile."""
         if sys.platform == "win32":
             pytest.skip("psycopg_pool requires SelectorEventLoop — skipped on Windows")
-
-        from src.config.settings import get_settings
-
-        settings = get_settings()
-        if not settings.database_url:
-            pytest.skip("DATABASE_URL not set — skipping integration test")
 
         gs = GraphService()
         try:
@@ -90,17 +108,12 @@ class TestGraphServiceIntegration:
         finally:
             await gs.shutdown()
 
+    @requires_postgres
     @pytest.mark.asyncio
     async def test_graph_service_process_message_real(self):
         """process_message against real PostgresSaver returns a string."""
         if sys.platform == "win32":
             pytest.skip("psycopg_pool requires SelectorEventLoop — skipped on Windows")
-
-        from src.config.settings import get_settings
-
-        settings = get_settings()
-        if not settings.database_url:
-            pytest.skip("DATABASE_URL not set — skipping integration test")
 
         gs = GraphService()
         try:

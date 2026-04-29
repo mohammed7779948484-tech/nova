@@ -484,6 +484,13 @@ and confirm graceful shutdown completes within 30 seconds.
 - **FR-027**: Paused conversations MUST include metadata about why
   escalation occurred (customer request, low AI confidence, or
   complex issue).
+- **FR-057**: Every conversation MUST have an explicit lifecycle
+  state drawn from exactly this set: `active` (AI is handling),
+  `escalated` (waiting for business owner input), `handed_off`
+  (owner controls messaging directly), `resolved` (conversation
+  completed). Allowed transitions: `active ↔ escalated`,
+  `escalated → handed_off`, `handed_off → active`,
+  `any → resolved`.
 
 #### Phase 4 — WhatsApp Channel
 
@@ -548,8 +555,10 @@ and confirm graceful shutdown completes within 30 seconds.
 
 - **FR-051**: Every database query MUST include tenant isolation.
   Data from one tenant MUST never be accessible to another.
-- **FR-052**: Authentication MUST use only the platform's built-in
-  auth system. Third-party authentication providers are forbidden.
+- **FR-052**: User authentication is handled by the Next.js frontend
+  via Supabase Auth. The Python backend is an internal service that
+  trusts the frontend as the authentication gatekeeper. Third-party
+  authentication providers are forbidden at the frontend layer.
 - **FR-053**: All channels (WhatsApp, web, future Telegram/Instagram)
   MUST implement a unified adapter interface. Core business logic
   MUST NOT import channel-specific modules.
@@ -558,6 +567,19 @@ and confirm graceful shutdown completes within 30 seconds.
   bypassing the orchestration graph.
 - **FR-055**: All external tools invoked by the AI MUST execute
   concurrently when independent, not sequentially.
+- **FR-056**: The Python backend is an internal AI core service.
+  Admin and supervisor endpoints (conversation listing, pending
+  reviews, resume, handoff, human-message) are called exclusively
+  by the Next.js frontend, which is the authentication gatekeeper.
+  The backend MUST NOT implement its own user authentication
+  validation on these endpoints in v1. Tenant isolation is enforced
+  by passing `tenant_id` from the frontend on every request.
+- **FR-058**: There is a single operator role in v1. The business
+  owner IS the supervisor — they are the same person. No
+  fine-grained role separation exists. All admin endpoints serve
+  this single owner persona.
+- **FR-059**: Messages are retained indefinitely in v1. No
+  automatic purge or retention policy is implemented.
 
 ### Key Entities
 
@@ -571,7 +593,8 @@ and confirm graceful shutdown completes within 30 seconds.
 
 - **Conversation**: An ongoing dialogue between a customer and an
   agent. Tied to a specific channel and customer identifier.
-  Contains messages and state checkpoints.
+  Contains messages and state checkpoints. Has an explicit lifecycle
+  state: `active`, `escalated`, `handed_off`, or `resolved`.
 
 - **Message**: A single utterance in a conversation. Has a sender
   role (customer, AI, supervisor), content, timestamp, and optional
@@ -658,8 +681,26 @@ and confirm graceful shutdown completes within 30 seconds.
 
 - There is no frontend dashboard in this specification. API endpoints
   for supervisor review and tenant management are provided for
-  integration by a separate frontend.
+  integration by a separate frontend. The Next.js frontend is the
+  authentication gatekeeper — the Python backend is an internal
+  service that trusts the frontend to authenticate users.
 
 - The AI's knowledge base comes from the tenant's product catalog
   stored in the database. External knowledge ingestion (PDF upload,
   website scraping) is out of scope for this version.
+
+- Messages are retained indefinitely in v1. No automatic purge or
+  retention policy is implemented.
+
+- WhatsApp 24-hour session window handling and template messages
+  for re-engagement are out of scope for v1.
+
+## Clarifications
+
+### Session 2026-04-28
+
+- Q: How are admin/supervisor endpoints protected from unauthorized access? → A: They are not — the Python backend is an internal AI core service. The Next.js frontend handles all authentication and acts as the gatekeeper. No auth validation on backend admin endpoints in v1.
+- Q: What are the explicit conversation lifecycle states and allowed transitions? → A: 4 states: `active`, `escalated`, `handed_off`, `resolved`. Transitions: active↔escalated, escalated→handed_off, handed_off→active, any→resolved.
+- Q: Are "business owner" and "supervisor" the same person or separate roles? → A: Same person. The business owner IS the supervisor. No separate permissions in v1.
+- Q: Is there a message retention/purge policy? → A: No. Messages retained indefinitely in v1.
+- Q: Does the spec need to handle WhatsApp 24-hour session windows and template messages? → A: Out of scope for v1.

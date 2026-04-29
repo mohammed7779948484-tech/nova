@@ -3,7 +3,6 @@
 PDCA Called Shot:
 - test_async_get_tenant_caches_result: call async_get_tenant("flower_shop") twice
   with a mocked DB backend, verify the DB is called only once.
-  Expected RED: AssertionError 2 != 1 (because no caching exists)
 """
 
 import asyncio
@@ -43,7 +42,9 @@ class TestTenantCaching:
         """async_get_tenant should cache results — DB called only once for 2 calls."""
         from src.config import tenant_config as module
 
-        original_cache = module._tenant_cache.copy() if hasattr(module, '_tenant_cache') else {}
+        # Clear the cache and the singleton DB instance before testing
+        module._tenant_cache.clear()
+        module._db_config = None
 
         call_count = 0
 
@@ -91,5 +92,5 @@ class TestTenantCaching:
                     f"Expected DB to be called once, but was called {call_count} times"
                 )
             finally:
-                if hasattr(module, '_tenant_cache'):
-                    module._tenant_cache.clear()
+                module._tenant_cache.clear()
+                module._db_config = None

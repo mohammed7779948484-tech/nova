@@ -18,6 +18,7 @@ dependencies = [
     "httpx>=0.26",
     "psycopg>=3.1",
     "psycopg-pool>=3.1",
+    "tenacity>=8.0",
 ]
 
 [project.optional-dependencies]

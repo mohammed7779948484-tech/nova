@@ -19,7 +19,7 @@ REAL_CONVERSATION_ID = "a0000000-0000-0000-0000-000000000099"
 
 
 class TestConversationServiceReal:
-    """Test ConversationService against real Supabase."""
+    """Test ConversationService against real Supabase database."""
 
     @pytest.mark.asyncio
     async def test_list_conversations_real_data(self):

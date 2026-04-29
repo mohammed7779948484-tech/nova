@@ -81,7 +81,8 @@ class ConversationService:
         client = await self._get_client()
         count_response = await client.get(
             "/conversations",
-            params={**count_params, "select": "id", "count": "exact"},
+            params={**count_params, "select": "id"},
+            headers={**self.headers, "Prefer": "count=exact"},
         )
         total = int(count_response.headers.get("content-range", "/").split("/")[-1] or 0)
 

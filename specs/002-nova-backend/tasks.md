@@ -236,17 +236,17 @@ Every test task MUST include before execution:
 
 ### Tests for User Story 3 (MANDATORY — PDCA TDD Enforced) 🚨
 
-- [ ] T030 [P] [US3] Write test for LLM service in `python-backend/tests/unit/test_llm_service.py`.
+- [X] T030 [P] [US3] Write test for LLM service in `python-backend/tests/unit/test_llm_service.py`.
   - **Called Shot**: `test_llm_service_retries_on_rate_limit` — invoke LLMService with a mock that raises `RateLimitError` twice then succeeds. Verify 3 total calls. Expected RED: `ImportError: cannot import name 'LLMService' from 'src.services.llm_service'` (file doesn't exist).
   - **Called Shot**: `test_llm_service_falls_back_to_next_model` — invoke with mock that always raises `APIError`. Verify it tries all registered models before raising `RuntimeError`. Expected RED: same ImportError.
   - **Called Shot**: `test_llm_service_returns_graceful_message_on_total_failure` — when all models fail, verify the returned message is the graceful fallback text. Expected RED: same ImportError.
 
-- [ ] T031 [P] [US3] Write test for context summary in `python-backend/tests/unit/test_context_summary.py`.
+- [X] T031 [P] [US3] Write test for context summary in `python-backend/tests/unit/test_context_summary.py`.
   - **Called Shot**: `test_system_prompt_includes_context_summary` — invoke `_build_system_prompt()` with a TenantConfig that has conversation context (discussed products, customer preferences). Verify the prompt includes context section. Expected RED: `AssertionError: '## Conversation Context' not found in prompt`.
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Create `python-backend/src/services/llm_service.py` (~150 lines). Adopt pattern from `reference-template/app/services/llm/service.py:39-334`:
+- [X] T032 [US3] Create `python-backend/src/services/llm_service.py` (~150 lines). Adopt pattern from `reference-template/app/services/llm/service.py:39-334`:
   1. `class LLMService` with `_current_model_index`, `_bound_tools`, and model list from `create_llm()` factory.
   2. `@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type((RateLimitError, APITimeoutError)))` on `_invoke_with_retry()`.
   3. `_switch_to_next_model()` — circular fallback preserving tool bindings.
@@ -255,18 +255,18 @@ Every test task MUST include before execution:
   6. On total failure: return graceful message `"I'm experiencing technical difficulties. Please try again shortly."` (FR-018).
   Add `tenacity` to `python-backend/pyproject.toml` dependencies.
 
-- [ ] T033 [US3] Update `python-backend/src/nodes/assistant.py` to use LLMService instead of direct `create_llm()` call:
+- [X] T033 [US3] Update `python-backend/src/nodes/assistant.py` to use LLMService instead of direct `create_llm()` call:
   1. Replace line 80 `model = create_llm(tc).bind_tools(ALL_TOOLS)` with: `from src.services.llm_service import llm_service` then `response = await llm_service.call(messages, tc)`.
   2. Wrap the call in try/except to handle graceful fallback message.
   3. Add context summary section to `_build_system_prompt()`: if state has conversation history > 5 messages, add `## Conversation Context\nPrevious topics discussed: {summary}`.
 
-- [ ] T034 [US3] Add parallel tool execution to `python-backend/src/nodes/tool_executor.py`. Adopt pattern from `reference-template/app/core/langgraph/graph.py:190-196`:
+- [X] T034 [US3] Add parallel tool execution to `python-backend/src/nodes/tool_executor.py`. Adopt pattern from `reference-template/app/core/langgraph/graph.py:190-196`:
   1. Currently lines 29-52 execute tools sequentially in a for loop.
   2. Change to: if `len(tool_calls) == 1`, execute directly. If `> 1`, use `asyncio.gather(*[execute_tool(tc) for tc in tool_calls])`.
   3. Add `import asyncio` at top.
   📎 LangGraph: `asyncio.gather()` for concurrent tool execution within a single node.
 
-- [ ] T035 [US3] Run all US3 tests: `pytest python-backend/tests/unit/test_llm_service.py python-backend/tests/unit/test_context_summary.py -v`. All GREEN.
+- [X] T035 [US3] Run all US3 tests: `pytest python-backend/tests/unit/test_llm_service.py python-backend/tests/unit/test_context_summary.py -v`. All GREEN.
 
 **Checkpoint**: AI calls are resilient with retry + fallback. Graceful degradation works. Tools execute in parallel.
 
