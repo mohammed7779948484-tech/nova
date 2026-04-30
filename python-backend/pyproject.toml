@@ -38,6 +38,10 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "integration: marks tests that require real Supabase connection (deselect with '-m \"not integration\"')",
+    "performance: marks performance/scalability tests (deselect with '-m \"not performance\"')",
+]
 
 [dependency-groups]
 dev = [

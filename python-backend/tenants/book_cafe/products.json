@@ -1,0 +1,38 @@
+[
+    {
+        "id": "book-001",
+        "name": "The Art of Mindfulness",
+        "description": "A beautifully illustrated guide to mindfulness and meditation. Perfect for coffee-table reading.",
+        "price": 24,
+        "currency": "USD",
+        "category": "books",
+        "image_url": "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400",
+        "tags": ["book", "mindfulness", "meditation", "wellness"],
+        "is_promoted": true,
+        "promotion_text": "📖 Book Club Pick of the Month!"
+    },
+    {
+        "id": "coffee-001",
+        "name": "Ethiopian Single Origin",
+        "description": "Rich and fruity single-origin Ethiopian coffee. Light roast with blueberry notes.",
+        "price": 18,
+        "currency": "USD",
+        "category": "coffee",
+        "image_url": "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400",
+        "tags": ["coffee", "ethiopian", "single-origin", "light-roast"],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "combo-001",
+        "name": "Reader's Delight Combo",
+        "description": "Any bestseller book + large latte + blueberry muffin. The perfect afternoon escape.",
+        "price": 28,
+        "currency": "USD",
+        "category": "combos",
+        "image_url": "https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=400",
+        "tags": ["combo", "book", "coffee", "muffin", "deal"],
+        "is_promoted": true,
+        "promotion_text": "☕ Save $8 with our Reader's Combo!"
+    }
+]

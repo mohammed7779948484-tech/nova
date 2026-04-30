@@ -10,11 +10,10 @@ Tests verify:
 
 from __future__ import annotations
 
-import time
 
 import pytest
 
-from src.config.tenant_config import TenantConfig, AgentConfig
+from src.config.tenant_config import TenantConfig
 
 
 class TestTenantCachingRealDB:

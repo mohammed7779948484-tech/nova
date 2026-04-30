@@ -9,7 +9,6 @@ PDCA Called Shot:
   Expected RED: AssertionError 'get_product_details' not found in tool names
 """
 
-import pytest
 
 from src.tools import ALL_TOOLS
 

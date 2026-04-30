@@ -6,7 +6,6 @@ PDCA Called Shot:
   Expected RED: AssertionError 'Always greet in Arabic' not found in prompt
 """
 
-import pytest
 
 from src.config.tenant_config import AgentConfig, TenantConfig
 from src.nodes.assistant import _build_system_prompt

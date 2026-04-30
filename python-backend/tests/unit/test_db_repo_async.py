@@ -60,7 +60,7 @@ class TestDBRepoRealSearch:
             if results:
                 first = results[0]
                 assert hasattr(first, "id") or hasattr(first, "name"), (
-                    f"Product should have 'id' or 'name' attribute"
+                    "Product should have 'id' or 'name' attribute"
                 )
         finally:
             await repo.aclose()

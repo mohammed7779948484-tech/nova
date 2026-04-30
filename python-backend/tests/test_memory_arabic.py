@@ -186,10 +186,10 @@ async def run_test() -> None:
 
     print_header("🧠 اختبار مكثف للذاكرة والسياق — مطعم الشرق الأوسط")
     print(f"  المستأجر: {tenant_slug} (مطعم الشرق الأوسط)")
-    print(f"  اسم الوكيل: نورة")
-    print(f"  اللغة: عربي (ar)")
-    print(f"  نموذج LLM: LongCat-Flash-Chat (حقيقي)")
-    print(f"  قاعدة البيانات: Supabase PostgreSQL (حقيقي)")
+    print("  اسم الوكيل: نورة")
+    print("  اللغة: عربي (ar)")
+    print("  نموذج LLM: LongCat-Flash-Chat (حقيقي)")
+    print("  قاعدة البيانات: Supabase PostgreSQL (حقيقي)")
     print(f"  الجلسة: {session_id}")
     print(f"  عدد الأدوار: {len(CONVERSATION)}")
     print()
@@ -266,7 +266,7 @@ async def run_test() -> None:
                 has_sides = any(w in r_lower for w in [
                     "مقبلات", "سلطة", "حمص", "فتة", "جانبي",
                 ])
-                has_allergy = any(w in r_lower for w in [
+                any(w in r_lower for w in [  # noqa: F841
                     "مكسرات", "حساسية", "بدون", "آمن",
                 ])
                 passed = has_sides

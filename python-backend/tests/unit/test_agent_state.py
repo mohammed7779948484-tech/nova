@@ -9,7 +9,6 @@ PDCA Called Shot:
   Expected RED: TypeError for missing required keys (dead fields still required)
 """
 
-import pytest
 
 from src.state.agent_state import SalesAgentState
 

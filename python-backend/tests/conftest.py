@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-import sys
-import warnings
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -35,7 +33,7 @@ if os.environ.get("DATABASE_URL", "").startswith("file:"):
 # test-mode skips in Settings.model_post_init (environment="test" bypasses
 # the required-field validation).
 
-from src.config.settings import get_settings
+from src.config.settings import get_settings  # noqa: E402
 
 # Reset the lru_cache so settings are re-read with the test env vars
 get_settings.cache_clear()

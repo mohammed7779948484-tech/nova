@@ -79,11 +79,11 @@ async def tenant_products(slug: str):
             )
         return {"products": agent.products, "tenant_slug": slug}
     except Exception as e:
-        # Fallback to JSON-based products
+        # Fallback to JSON-based products (DEPRECATED — use DBProductRepository)
         try:
-            from src.repositories.json_repo import JSONProductRepository
-            repo = JSONProductRepository(slug)
-            products = repo.get_all_products()
+            from src.repositories.json_repo import get_fallback_repository
+            repo = get_fallback_repository()
+            products = repo.get_all_products(tenant_id=slug)
             return {"products": products, "tenant_slug": slug}
         except Exception:
             pass

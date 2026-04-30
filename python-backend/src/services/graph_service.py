@@ -259,10 +259,18 @@ class GraphService:
         return None
 
     async def shutdown(self) -> None:
-        """Close the connection pool on application shutdown."""
+        """Close the connection pool on application shutdown.
+
+        Handles errors gracefully — always clears the pool reference
+        even if close() fails, preventing resource leaks.
+        """
         if self._connection_pool is not None:
-            await self._connection_pool.close()
-            self._connection_pool = None
+            try:
+                await self._connection_pool.close()
+            except Exception:
+                logger.warning("connection_pool_close_failed")
+            finally:
+                self._connection_pool = None
             logger.info("connection_pool_closed")
 
 

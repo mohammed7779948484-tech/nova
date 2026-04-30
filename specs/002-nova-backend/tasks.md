@@ -578,7 +578,7 @@ Task T016: "Rename misleading tool"      # send_product_image.py → get_product
 
 ### FR-002 — Dead Code Removal (Phase 0 gap)
 
-- [ ] T074 [P] [US1] Delete unreachable dead-code modules:
+- [X] T074 [P] [US1] Delete unreachable dead-code modules:
   1. Delete `python-backend/src/models/catalog.py` entirely — replaced by `src/models/product.py` + repository pattern. Grep for any remaining imports: `grep -r "from src.models.catalog" python-backend/src/` — fix any found.
   2. In `python-backend/src/repositories/json_repo.py` — convert to fallback-only: remove all public methods except `get_all_products()`. Add module docstring: `"DEPRECATED: Use DBProductRepository. Retained only as YAML fallback."`.
   3. Verify `python-backend/src/__init__.py` and `src/repositories/__init__.py` do NOT import from `catalog.py` or expose `JSONProductRepository` as primary.
@@ -606,34 +606,34 @@ Task T016: "Rename misleading tool"      # send_product_image.py → get_product
 
 ### FR-037 — Per-Tenant Subscription Rate Limits (Phase 5 gap)
 
-- [ ] T079 [P] [US6] Write test for subscription-plan rate limiting in `python-backend/tests/unit/test_tenant_rate_limit.py`.
+- [X] T079 [P] [US6] Write test for subscription-plan rate limiting in `python-backend/tests/unit/test_tenant_rate_limit.py`.
   - **Called Shot**: `test_tenant_limit_enforced_across_customers` — create 3 different customer IPs all hitting the same tenant, verify that when combined requests exceed tenant plan limit, the 429 fires. Expected RED: `AssertionError: expected 429 but got 200` (current limiter is IP-only, no tenant aggregate).
 
-- [ ] T080 [US6] Extend `python-backend/src/middleware/rate_limiter.py` to add per-tenant aggregate counter:
+- [X] T080 [US6] Extend `python-backend/src/middleware/rate_limiter.py` to add per-tenant aggregate counter:
   1. Add second counter dict: `_tenant_counters: dict[str, list[float]]` keyed by `tenant_id`.
   2. Default tenant plan limit: 600 req/hour (configurable via `TENANT_RATE_LIMIT_PER_HOUR` env var).
   3. Check tenant counter BEFORE IP counter — if tenant exceeds plan limit, return 429 with `{"detail": "Tenant plan limit exceeded"}`.
 
 ### FR-044 — Log File Daily Rotation (Phase 6 gap)
 
-- [ ] T081 [US7] Add daily log file rotation to `python-backend/src/core/logging_config.py`:
+- [X] T081 [US7] Add daily log file rotation to `python-backend/src/core/logging_config.py`:
   1. In `setup_logging()`, when `log_format == "json"` (production), add `logging.handlers.TimedRotatingFileHandler` with `when="midnight"`, `backupCount=30`, `filename="logs/nova.log"`.
   2. Ensure `logs/` directory is created on startup if it doesn't exist: `Path("logs").mkdir(exist_ok=True)`.
   3. Add `logs/` to `.gitignore` and `.dockerignore`.
 
 ### FR-045 — PII Scrubbing in Logs (Phase 6 gap)
 
-- [ ] T082 [P] [US7] Write test for PII scrubber in `python-backend/tests/unit/test_pii_scrubber.py`.
+- [X] T082 [P] [US7] Write test for PII scrubber in `python-backend/tests/unit/test_pii_scrubber.py`.
   - **Called Shot**: `test_phone_numbers_scrubbed` — pass a log record containing `+1234567890`, verify the emitted log replaces it with `[PHONE]`. Expected RED: `AssertionError: '+1234567890' found in log output`.
   - **Called Shot**: `test_email_addresses_scrubbed` — same for email addresses. Expected RED: `AssertionError: email still present`.
 
-- [ ] T083 [US7] Create `python-backend/src/core/pii_scrubber.py` (~40 lines) and wire into structlog:
+- [X] T083 [US7] Create `python-backend/src/core/pii_scrubber.py` (~40 lines) and wire into structlog:
   1. `def scrub_pii(value: str) -> str` — regex-replace: phone numbers (`+?\d[\d\s\-]{8,}\d` → `[PHONE]`), emails (`\S+@\S+\.\S+` → `[EMAIL]`).
   2. Add `PIIScrubberProcessor` as a structlog processor in `setup_logging()` before `JSONRenderer`.
 
 ### FR-050 — Multi-Stage Docker Build (Phase 7 gap)
 
-- [ ] T084 [US8] Rewrite `python-backend/Dockerfile` as true multi-stage build (~25 lines):
+- [X] T084 [US8] Rewrite `python-backend/Dockerfile` as true multi-stage build (~25 lines):
   ```dockerfile
   # Stage 1: builder
   FROM python:3.12-slim AS builder
@@ -654,7 +654,7 @@ Task T016: "Rename misleading tool"      # send_product_image.py → get_product
 
 ### FR-051 — Cross-Tenant Isolation Test (Cross-Cutting gap)
 
-- [ ] T085 [P] Write cross-tenant isolation test in `python-backend/tests/integration/test_tenant_isolation.py`.
+- [X] T085 [P] Write cross-tenant isolation test in `python-backend/tests/integration/test_tenant_isolation.py`.
   - **Called Shot**: `test_tenant_a_cannot_read_tenant_b_conversations` — create two tenants (A and B) in test fixtures, create conversations for each, query `GET /api/conversations?agent_id=<agent_A>`, verify ZERO rows from tenant B appear. Expected RED: requires integration test harness with real Supabase test instance — use `pytest.mark.integration` marker and `SUPABASE_TEST_URL` env var.
   - **Called Shot**: `test_tenant_a_products_not_in_tenant_b_search` — search products for tenant A, verify no tenant B products appear. Expected RED: same integration harness.
   - Add `pytest.mark.integration` marker to `python-backend/pyproject.toml` markers config.
@@ -667,25 +667,25 @@ Task T016: "Rename misleading tool"      # send_product_image.py → get_product
 
 ### SC-005 — 50 Concurrent Conversations
 
-- [ ] T086 [P] Write concurrency test in `python-backend/tests/performance/test_concurrency.py`.
+- [X] T086 [P] Write concurrency test in `python-backend/tests/performance/test_concurrency.py`.
   - **Called Shot**: `test_50_concurrent_conversations` — use `asyncio.gather()` to fire 50 simultaneous `GraphService.process_message()` calls across 5 simulated tenants (10 each). Assert all complete within 10 seconds and all return non-empty responses. Expected RED: either timeout or event-loop blocking from any remaining sync I/O. Use `pytest-asyncio` with `asyncio_mode = "auto"`.
   - Mock LLM responses to return instantly — only testing concurrency infrastructure, not AI quality.
 
-- [ ] T087 [US6] Create `python-backend/tests/performance/__init__.py` and add `@pytest.mark.performance` marker to `pyproject.toml`. Performance tests excluded from default `pytest` run — run with: `pytest -m performance`.
+- [X] T087 [US6] Create `python-backend/tests/performance/__init__.py` and add `@pytest.mark.performance` marker to `pyproject.toml`. Performance tests excluded from default `pytest` run — run with: `pytest -m performance`.
 
 ### SC-006 — Zero Cross-Tenant Data Leakage
 
-- [ ] T088 Covered by T085 (cross-tenant isolation tests). Confirm T085 is tagged `[SC-006]` and runs in CI.
+- [X] T088 Covered by T085 (cross-tenant isolation tests). Confirm T085 is tagged `[SC-006]` and runs in CI.
 
 ### SC-007 — 15-Second Startup
 
-- [ ] T089 [P] [US8] Write startup timing test in `python-backend/tests/unit/test_startup_time.py`.
+- [X] T089 [P] [US8] Write startup timing test in `python-backend/tests/unit/test_startup_time.py`.
   - **Called Shot**: `test_app_starts_within_15_seconds` — record time before calling `app.router.startup()` coroutine (from FastAPI lifespan), assert elapsed < 15.0 seconds. Expected RED: test currently fails because startup includes network calls to Supabase (pool init) — mock the pool creation to measure overhead only.
   - This is a regression guard, not a full integration test.
 
 ### SC-008 — 30-Second Graceful Shutdown
 
-- [ ] T090 [P] [US8] Write graceful shutdown test in `python-backend/tests/unit/test_graceful_shutdown.py`.
+- [X] T090 [P] [US8] Write graceful shutdown test in `python-backend/tests/unit/test_graceful_shutdown.py`.
   - **Called Shot**: `test_shutdown_closes_connections_within_30s` — simulate in-flight requests during shutdown. Trigger lifespan teardown. Verify: (1) `graph_service.shutdown()` is awaited, (2) `_db_repo.aclose()` is awaited, (3) all complete within 30 seconds. Expected RED: `AssertionError: shutdown did not close connection pool` (T028 adds the calls but this test verifies ordering and timing).
 
 ---

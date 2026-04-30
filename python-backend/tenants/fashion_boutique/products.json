@@ -1,0 +1,38 @@
+[
+    {
+        "id": "dress-001",
+        "name": "Silk Evening Gown",
+        "description": "Elegant floor-length silk gown in midnight blue. Perfect for formal events and galas.",
+        "price": 299,
+        "currency": "USD",
+        "category": "dresses",
+        "image_url": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400",
+        "tags": ["dress", "silk", "evening", "formal", "gown"],
+        "is_promoted": true,
+        "promotion_text": "🌟 New Arrival! 15% off this week only"
+    },
+    {
+        "id": "dress-002",
+        "name": "Casual Linen Blazer",
+        "description": "Relaxed-fit linen blazer in sand beige. Great for business casual and weekend brunch.",
+        "price": 149,
+        "currency": "USD",
+        "category": "blazers",
+        "image_url": "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400",
+        "tags": ["blazer", "linen", "casual", "business", "summer"],
+        "is_promoted": false,
+        "promotion_text": ""
+    },
+    {
+        "id": "acc-001",
+        "name": "Leather Tote Bag",
+        "description": "Premium Italian leather tote bag in cognac brown. Spacious and stylish.",
+        "price": 189,
+        "currency": "USD",
+        "category": "accessories",
+        "image_url": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400",
+        "tags": ["bag", "leather", "tote", "accessory", "italian"],
+        "is_promoted": true,
+        "promotion_text": "👜 Best Seller! Free monogramming this month"
+    }
+]

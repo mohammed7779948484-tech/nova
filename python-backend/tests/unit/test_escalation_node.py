@@ -20,7 +20,6 @@ import uuid
 
 import pytest
 
-from src.models.enums import EscalationReason
 
 
 def _postgres_reachable() -> bool:
@@ -103,7 +102,7 @@ class TestEscalationViaRealGraph:
 
         try:
             # Send an escalation message
-            result = await gs.process_message(
+            await gs.process_message(
                 tenant_slug="flower_shop",
                 session_id=session_id,
                 message="I need to talk to a manager right now!",
