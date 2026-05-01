@@ -4,17 +4,14 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # ربط الملفات المحلية مع الـ container (التعديلات تنعكس فوراً)
       - ./src:/app/src
       - ./tests:/app/tests
       - ./.env:/app/.env
       - ./tenants:/app/tenants
     environment:
       - ENVIRONMENT=development
-    # أوقف الـ reload flag في الإنتاج، هنا للتطوير فقط
-    command: uv run uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
 
-  # خدمة لتشغيل الاختبارات فقط (لا تعمل كـ سيرفر دائم)
   test:
     build: .
     volumes:
@@ -23,4 +20,4 @@ services:
       - ./.env:/app/.env
     environment:
       - ENVIRONMENT=test
-    command: uv run pytest tests/ -v
+    command: pytest tests/ -v
